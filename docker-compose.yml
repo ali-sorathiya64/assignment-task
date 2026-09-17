@@ -1,0 +1,20 @@
+services:
+   backend:
+    build: ./backend
+    container_name: task-backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+
+   client:
+    build: ./client
+    container_name: task-client
+    restart: always
+    env_file:
+      - ./frontend/.env
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
