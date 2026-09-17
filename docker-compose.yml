@@ -9,7 +9,7 @@ services:
       - "8000:8000"
 
    client:
-    build: ./client
+    build: ./frontend
     container_name: task-client
     restart: always
     env_file:
