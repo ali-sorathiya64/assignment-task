@@ -847,7 +847,7 @@ task.
 
 ### Platform / Live Demo
 
-`<ADD_LIVE_DEMO_LINK_IF_AVAILABLE>`
+`<https://youtu.be/hT2G4qUtALM?si=hm6qQIwOAwehM4FN>`
 
 ------------------------------------------------------------------------
 
