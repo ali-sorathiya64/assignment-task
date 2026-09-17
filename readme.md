@@ -721,47 +721,45 @@ environments.
 
 ## Screenshots
 
-> Screenshots will be added here before final submission.
-
 ### Login
 
-`![Login](docs/screenshots/login.jpg)`
+![Login](docs/screenshots/login.jpg)
 
 ### Student Dashboard
 
-`![Student Dashboard](docs/screenshots/student-dashboard.jpg)`
+![Student Dashboard](docs/screenshots/student-dashboard.jpg)
 
 ### Student Groups
 
-`![Student Groups](docs/screenshots/group.jpg)`
+![Student Groups](docs/screenshots/group.jpg)
 
 ### Student Assignments
 
-`![Student Assignments](docs/screenshots/assignments.jpg)`
+![Student Assignments](docs/screenshots/assignments.jpg)
 
 ### Assignment Submission Confirmation
 
-`![Submission Confirmation](docs/screenshots/submission-confirmation.jpg)`
+![Submission Confirmation](docs/screenshots/submission-confirmation.jpg)
 
 ### Ask AI
 
-`![Ask AI](docs/screenshots/ask-ai.jpg)`
+![Ask AI](docs/screenshots/ask-ai.jpg)
 
 ### Admin Dashboard
 
-`![Admin Dashboard](docs/screenshots/admin-dashboard.jpg)`
+![Admin Dashboard](docs/screenshots/admin-dashboard.jpg)
 
 ### Assignment Management
 
-`![Assignment Management](docs/screenshots/admin-assignments.jpg)`
+![Assignment Management](docs/screenshots/admin-assignments.jpg)
 
 ### Analytics
 
-`![Analytics](docs/screenshots/analytics.jpg)`
+![Analytics](docs/screenshots/analytics.jpg)
 
 ### Swagger API Documentation
 
-`![Swagger](docs/screenshots/swagger.jpg)`
+![Swagger](docs/screenshots/swagger.jpg)
 
 ------------------------------------------------------------------------
 
