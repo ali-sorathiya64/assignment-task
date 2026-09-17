@@ -4,6 +4,7 @@ import PageHeader from "../../components/layout/PageHeader.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
 import AssignmentCard from "./AssignmentCard.jsx";
 import ConfirmSubmissionModal from "./ConfirmSubmissionModal.jsx";
+import AskAIModal from "./AskAIModal.jsx";
 
 const filters = [
     { key: "all", label: "All" },
@@ -24,6 +25,7 @@ const StudentAssignments = () => {
 
     const [filter, setFilter] = useState("all");
     const [active, setActive] = useState(null);
+    const [asking, setAsking] = useState(null);
 
     const visible = assignments.filter((assignment) => {
         if (filter === "pending") return !assignment.submitted;
@@ -95,6 +97,7 @@ const StudentAssignments = () => {
                             key={assignment.id}
                             assignment={assignment}
                             onConfirm={setActive}
+                            onAskAI={setAsking}
                         />
                     ))}
                 </div>
@@ -104,6 +107,11 @@ const StudentAssignments = () => {
                 assignment={active}
                 onClose={() => setActive(null)}
                 onConfirmed={markSubmitted}
+            />
+
+            <AskAIModal
+                assignment={asking}
+                onClose={() => setAsking(null)}
             />
         </>
     );

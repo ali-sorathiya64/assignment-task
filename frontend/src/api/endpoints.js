@@ -40,3 +40,8 @@ export const analyticsApi = {
     assignment: (assignmentId) =>
         api.get(`/api/analytics/assignments/${assignmentId}`)
 };
+
+export const aiApi = {
+    chat: (assignmentId, question) =>
+        api.post(`/api/ai/chat/${assignmentId}`, { question })
+};

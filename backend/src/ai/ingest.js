@@ -1,8 +1,11 @@
 import { Document } from "@langchain/core/documents";
 import pool from "../db/connection.js";
-import vectorStore from "./vectorStore.js";
+import { pineconeIndex } from "./vectorStore.js";
+import embeddings from "./embeddings.js";
 
-export const ingestAssignments = async () => {
+const ingestAssignments = async () => {
+    console.log("1. Starting ingestion...");
+
     const result = await pool.query(`
         SELECT
             id,
@@ -15,13 +18,11 @@ export const ingestAssignments = async () => {
         ORDER BY id
     `);
 
-    if (result.rows.length === 0) {
-        console.log("No assignments found to ingest");
-        return;
-    }
+    console.log(`2. PostgreSQL returned ${result.rows.length} assignments`);
 
     const documents = result.rows.map((assignment) => {
-        const content = `
+        return new Document({
+            pageContent: `
 Assignment Title: ${assignment.title}
 
 Description:
@@ -35,10 +36,7 @@ ${assignment.onedrive_link || "No submission link provided"}
 
 Assignment Type:
 ${assignment.is_global ? "Available to all students" : "Assigned to specific students or groups"}
-        `.trim();
-
-        return new Document({
-            pageContent: content,
+            `.trim(),
             metadata: {
                 assignmentId: assignment.id,
                 title: assignment.title
@@ -46,13 +44,46 @@ ${assignment.is_global ? "Available to all students" : "Assigned to specific stu
         });
     });
 
-    await vectorStore.addDocuments(documents);
+    console.log("3. Generating embeddings...");
 
-    console.log(
-        `Successfully ingested ${documents.length} assignments into Pinecone`
-    );
+    const vectors = [];
+
+    for (const document of documents) {
+        const embedding = await embeddings.embedQuery(document.pageContent);
+
+        vectors.push({
+            id: `assignment-${document.metadata.assignmentId}`,
+            values: embedding,
+            metadata: {
+                assignmentId: document.metadata.assignmentId,
+                title: document.metadata.title,
+                text: document.pageContent
+            }
+        });
+
+        console.log(
+            `4. Embedded assignment ${document.metadata.assignmentId}`
+        );
+    }
+
+    console.log("5. Connecting to Pinecone...");
+
+    const indexStats = await pineconeIndex.describeIndexStats();
+
+    console.log("6. Pinecone connected");
+    console.log(indexStats);
+
+    console.log("7. Uploading vectors...");
+
+    await pineconeIndex.upsert(vectors, {
+        namespace: "assignments"
+    });
+
+    console.log("8. Ingestion completed successfully");
 };
 
 ingestAssignments().catch((error) => {
-    console.error("Ingestion failed:", error);
+    console.error("Ingestion failed:");
+    console.error(error);
+    process.exit(1);
 });

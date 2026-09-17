@@ -3,7 +3,7 @@ import Badge from "../../components/ui/Badge.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
 
-const AssignmentCard = ({ assignment, onConfirm }) => {
+const AssignmentCard = ({ assignment, onConfirm, onAskAI }) => {
     const due = dueLabel(assignment.due_date);
     const submitted = assignment.submitted;
 
@@ -66,6 +66,15 @@ const AssignmentCard = ({ assignment, onConfirm }) => {
                         ✓ Submitted
                     </Badge>
                 )}
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAskAI(assignment)}
+                    className="justify-center"
+                >
+                    ✦ Ask AI
+                </Button>
             </div>
         </Card>
     );

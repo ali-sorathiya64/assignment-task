@@ -11,6 +11,7 @@ import Card from "../../components/ui/Card.jsx";
 import Progress from "../../components/ui/Progress.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
 import ConfirmSubmissionModal from "./ConfirmSubmissionModal.jsx";
+import AskAIModal from "./AskAIModal.jsx";
 
 const StudentDashboard = () => {
     const { user } = useAuth();
@@ -26,6 +27,7 @@ const StudentDashboard = () => {
 
     const [groups, setGroups] = useState([]);
     const [active, setActive] = useState(null);
+    const [asking, setAsking] = useState(null);
 
     useEffect(() => {
         groupApi
@@ -63,9 +65,7 @@ const StudentDashboard = () => {
 
             {!loading && !error && (
                 <div className="space-y-6">
-                    {/* Hero progress block — different layout */}
                     <div className="grid gap-4 lg:grid-cols-3">
-                        {/* Left: big progress */}
                         <Card className="lg:col-span-2 px-6 py-7">
                             <div className="flex items-start justify-between gap-6">
                                 <div className="min-w-0 flex-1">
@@ -97,7 +97,6 @@ const StudentDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* Right: ring/badge */}
                                 <div className="hidden shrink-0 sm:block">
                                     <div className="relative grid h-24 w-24 place-items-center">
                                         <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
@@ -132,7 +131,6 @@ const StudentDashboard = () => {
                             </div>
                         </Card>
 
-                        {/* Right: two small stats stacked */}
                         <div className="grid gap-4">
                             <Card className="px-5 py-4">
                                 <div className="flex items-center justify-between">
@@ -163,7 +161,6 @@ const StudentDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Next up */}
                     <div>
                         <div className="mb-3 flex items-end justify-between">
                             <h2 className="font-display text-base font-bold tracking-tight text-ink">
@@ -196,7 +193,7 @@ const StudentDashboard = () => {
                                         <Card
                                             key={a.id}
                                             hover
-                                            className="flex items-center justify-between gap-4 px-5 py-4"
+                                            className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2">
@@ -212,13 +209,22 @@ const StudentDashboard = () => {
                                                 </p>
                                             </div>
 
-                                            <Button
-                                                size="sm"
-                                                variant="accent"
-                                                onClick={() => setActive(a)}
-                                            >
-                                                Confirm
-                                            </Button>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setAsking(a)}
+                                                >
+                                                    ✦ Ask AI
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="accent"
+                                                    onClick={() => setActive(a)}
+                                                >
+                                                    Confirm
+                                                </Button>
+                                            </div>
                                         </Card>
                                     );
                                 })}
@@ -232,6 +238,11 @@ const StudentDashboard = () => {
                 assignment={active}
                 onClose={() => setActive(null)}
                 onConfirmed={markSubmitted}
+            />
+
+            <AskAIModal
+                assignment={asking}
+                onClose={() => setAsking(null)}
             />
         </>
     );

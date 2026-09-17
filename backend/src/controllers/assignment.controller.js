@@ -1,4 +1,5 @@
 import pool from "../db/connection.js";
+import { indexAssignment } from "../ai/indexAssignment.js";
 
 export const createAssignment = async (req, res) => {
     try {
@@ -33,18 +34,18 @@ export const createAssignment = async (req, res) => {
 
         const result = await pool.query(
             `INSERT INTO assignments
-                (title, description, due_date, onedrive_link, created_by, is_global)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING
-                id,
-                title,
-                description,
-                due_date,
-                onedrive_link,
-                created_by,
-                is_global,
-                created_at,
-                updated_at`,
+        (title, description, due_date, onedrive_link, created_by, is_global)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING
+        id,
+        title,
+        description,
+        due_date,
+        onedrive_link,
+        created_by,
+        is_global,
+        created_at,
+        updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,
@@ -55,11 +56,18 @@ export const createAssignment = async (req, res) => {
             ]
         );
 
+        try {
+            await indexAssignment(result.rows[0].id);
+        } catch (aiError) {
+            console.error("AI indexing failed:", aiError.message);
+        }
+
         return res.status(201).json({
             success: true,
             message: "Assignment created successfully",
             assignment: result.rows[0]
         });
+
     } catch (error) {
         console.error("Create assignment error:", error);
 
@@ -340,24 +348,24 @@ export const updateAssignment = async (req, res) => {
 
         const result = await pool.query(
             `UPDATE assignments
-             SET
-                title = $1,
-                description = $2,
-                due_date = $3,
-                onedrive_link = $4,
-                is_global = $5,
-                updated_at = NOW()
-             WHERE id = $6
-             RETURNING
-                id,
-                title,
-                description,
-                due_date,
-                onedrive_link,
-                created_by,
-                is_global,
-                created_at,
-                updated_at`,
+     SET
+        title = $1,
+        description = $2,
+        due_date = $3,
+        onedrive_link = $4,
+        is_global = $5,
+        updated_at = NOW()
+     WHERE id = $6
+     RETURNING
+        id,
+        title,
+        description,
+        due_date,
+        onedrive_link,
+        created_by,
+        is_global,
+        created_at,
+        updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,
@@ -367,6 +375,12 @@ export const updateAssignment = async (req, res) => {
                 assignmentId
             ]
         );
+
+        try {
+            await indexAssignment(result.rows[0].id);
+        } catch (aiError) {
+            console.error("AI indexing failed:", aiError.message);
+        }
 
         return res.status(200).json({
             success: true,

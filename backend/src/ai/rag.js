@@ -1,5 +1,6 @@
-import vectorStore from "./vectorStore.js";
 import { ChatOpenAI } from "@langchain/openai";
+import embeddings from "./embeddings.js";
+import pineconeIndex from "./vectorStore.js";
 
 const llm = new ChatOpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -11,35 +12,43 @@ const llm = new ChatOpenAI({
 });
 
 export const askAssignmentAI = async (question, assignmentId) => {
-    const documents = await vectorStore.similaritySearch(
-        question,
-        4,
-        {
-            assignmentId: Number(assignmentId)
-        }
-    );
+    const queryEmbedding = await embeddings.embedQuery(question);
 
-    if (documents.length === 0) {
+    const result = await pineconeIndex.query({
+        vector: queryEmbedding,
+        topK: 3,
+        includeMetadata: true,
+        filter: {
+            assignmentId: {
+                $eq: Number(assignmentId)
+            }
+        }
+    });
+
+    if (!result.matches || result.matches.length === 0) {
         return {
-            answer: "I could not find information about this assignment."
+            answer: "I could not find information about this assignment.",
+            sources: []
         };
     }
 
-    const context = documents
-        .map((document) => document.pageContent)
+    const context = result.matches
+        .map((match) => match.metadata?.text || "")
+        .filter(Boolean)
         .join("\n\n");
 
     const prompt = `
 You are an AI assistant for a student assignment management system.
 
-Answer the student's question using only the assignment information provided below.
+Answer the student's question using only the provided assignment information.
 
-If the answer is not available in the provided information, say:
+Do not invent assignment requirements, deadlines, submission links, or instructions.
+
+If the information is not available, say:
 "I don't have enough information about this assignment."
 
-Do not invent requirements, deadlines, links, or instructions.
-
 Assignment information:
+
 ${context}
 
 Student question:
@@ -50,9 +59,9 @@ ${question}
 
     return {
         answer: response.content,
-        sources: documents.map((document) => ({
-            assignmentId: document.metadata.assignmentId,
-            title: document.metadata.title
+        sources: result.matches.map((match) => ({
+            assignmentId: match.metadata?.assignmentId,
+            title: match.metadata?.title
         }))
     };
 };
