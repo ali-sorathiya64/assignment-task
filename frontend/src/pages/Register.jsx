@@ -58,7 +58,7 @@ const Register = () => {
                         name="name"
                         required
                         className="field"
-                        placeholder="Riya Patel"
+                        placeholder="whySokai"
                         value={form.name}
                         onChange={change}
                     />
