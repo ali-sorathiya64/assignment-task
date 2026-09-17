@@ -839,16 +839,11 @@ task.
 
 ### Repository
 
-`<https://github.com/ali-sorathiya64/assignment-task>`
+https://github.com/ali-sorathiya64/assignment-task
 
 ### Demo Video
 
-`<ADD_DEMO_VIDEO_LINK>`
-
-### Platform / Live Demo
-
-`<https://youtu.be/hT2G4qUtALM?si=hm6qQIwOAwehM4FN>`
-
+https://youtu.be/hT2G4qUtALM
 ------------------------------------------------------------------------
 
 ## Author
