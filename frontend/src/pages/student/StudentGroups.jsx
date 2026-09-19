@@ -244,7 +244,7 @@ const StudentGroups = () => {
                 <input
                     id="member"
                     className="field"
-                    placeholder="riya@college.edu or 2"
+                    placeholder="kai@college.edu or 2"
                     value={memberInput}
                     onChange={(event) => setMemberInput(event.target.value)}
                 />
