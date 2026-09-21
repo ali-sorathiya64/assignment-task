@@ -2,6 +2,7 @@ import { ChatOpenAI } from "@langchain/openai";
 import embeddings from "./embeddings.js";
 import pineconeIndex from "./vectorStore.js";
 import { NAMESPACE } from "./indexAssignment.js";
+import { COURSE_NAMESPACE } from "./indexCourse.js";
 
 const llm = new ChatOpenAI({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -15,75 +16,98 @@ const llm = new ChatOpenAI({
 const SCORE_THRESHOLD = 0.1;
 const TOP_K = 8;
 
-export const askAssignmentAI = async (question, assignmentId) => {
-    const queryEmbedding = await embeddings.embedQuery(question);
+const queryNamespace = async (namespace, question, filter) => {
+    const embedding = await embeddings.embedQuery(question);
 
-    const result = await pineconeIndex.namespace(NAMESPACE).query({
-        vector: queryEmbedding,
+    const result = await pineconeIndex.namespace(namespace).query({
+        vector: embedding,
         topK: TOP_K,
         includeMetadata: true,
-        filter: {
-            assignmentId: { $eq: Number(assignmentId) }
-        }
+        filter
     });
 
-    const allMatches = result.matches || [];
-
-    console.log(
-        `[AI] Query for assignment ${assignmentId} — matches: ${allMatches.length}`
-    );
-    for (const m of allMatches) {
-        console.log(
-            `[AI]   id=${m.id} score=${m.score?.toFixed(4)} title="${m.metadata?.title}"`
-        );
-    }
-
-    const matches = allMatches.filter(
+    return (result.matches || []).filter(
         (m) => (m.score ?? 0) >= SCORE_THRESHOLD
     );
+};
 
-    if (matches.length === 0) {
-        return {
-            answer:
-                "I couldn't find this assignment's details. Try asking about the title, description, deadline, or submission link.",
-            sources: []
-        };
-    }
-
-    const context = matches
-        .map((match) => match.metadata?.text || "")
-        .filter(Boolean)
-        .join("\n\n---\n\n");
-
-    const prompt = `
+const buildPrompt = (context, question, scope) => `
 You are an AI assistant for a student assignment management system.
 
-The student is asking about ONE specific assignment. Below is all the information we have about it.
+The student is asking about a specific ${scope}. Below is all the information we have.
 
 RULES:
 1. Answer using ONLY the information below.
-2. If the student asks about something present below, answer it directly and concisely.
-3. If the answer is genuinely NOT present below, respond with exactly:
-   "I don't have that information for this assignment."
-4. Do not invent deadlines, links, or requirements.
-5. Keep answers short — 1 to 3 sentences unless the student asks for detail.
+2. If the answer is genuinely NOT present below, respond with exactly:
+   "I don't have that information."
+3. Do not invent details.
+4. Keep answers short — 1 to 3 sentences unless the student asks for detail.
 
-ASSIGNMENT INFORMATION:
+${scope.toUpperCase()} INFORMATION:
 ${context}
 
 STUDENT QUESTION:
 ${question}
 
 ANSWER:
-    `.trim();
+`.trim();
 
-    const response = await llm.invoke(prompt);
+export const askAssignmentAI = async (question, assignmentId) => {
+    const matches = await queryNamespace(NAMESPACE, question, {
+        assignmentId: { $eq: Number(assignmentId) }
+    });
+
+    if (matches.length === 0) {
+        return {
+            answer: "I don't have that information for this assignment.",
+            sources: []
+        };
+    }
+
+    const context = matches
+        .map((m) => m.metadata?.text || "")
+        .filter(Boolean)
+        .join("\n\n---\n\n");
+
+    const response = await llm.invoke(
+        buildPrompt(context, question, "assignment")
+    );
 
     return {
         answer: response.content,
-        sources: matches.map((match) => ({
-            assignmentId: match.metadata?.assignmentId,
-            title: match.metadata?.title
+        sources: matches.map((m) => ({
+            assignmentId: m.metadata?.assignmentId,
+            title: m.metadata?.title
+        }))
+    };
+};
+
+export const askCourseAI = async (question, courseId) => {
+    const matches = await queryNamespace(COURSE_NAMESPACE, question, {
+        courseId: { $eq: Number(courseId) }
+    });
+
+    if (matches.length === 0) {
+        return {
+            answer: "I don't have that information for this course.",
+            sources: []
+        };
+    }
+
+    const context = matches
+        .map((m) => m.metadata?.text || "")
+        .filter(Boolean)
+        .join("\n\n---\n\n");
+
+    const response = await llm.invoke(
+        buildPrompt(context, question, "course")
+    );
+
+    return {
+        answer: response.content,
+        sources: matches.map((m) => ({
+            courseId: m.metadata?.courseId,
+            title: m.metadata?.title
         }))
     };
 };

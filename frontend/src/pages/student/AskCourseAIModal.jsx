@@ -4,7 +4,7 @@ import { readError } from "../../api/client.js";
 import Button from "../../components/ui/Button.jsx";
 import Modal from "../../components/ui/Modal.jsx";
 
-const AskAIModal = ({ assignment, onClose }) => {
+const AskCourseAIModal = ({ course, onClose }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -14,18 +14,18 @@ const AskAIModal = ({ assignment, onClose }) => {
     const inputRef = useRef(null);
 
     useEffect(() => {
-        if (!assignment) return;
+        if (!course) return;
 
         setMessages([
             {
                 role: "assistant",
-                content: `Hi! Ask me anything about "${assignment.title}" — I know its description, deadline, submission link, and type.`
+                content: `Hi! Ask me anything about "${course.name}" — the professor, description, assignments, or enrollment.`
             }
         ]);
         setInput("");
         setError("");
         setLoading(false);
-    }, [assignment]);
+    }, [course]);
 
     useEffect(() => {
         const el = scrollRef.current;
@@ -33,13 +33,13 @@ const AskAIModal = ({ assignment, onClose }) => {
     }, [messages, loading]);
 
     useEffect(() => {
-        if (assignment) {
+        if (course) {
             const id = setTimeout(() => inputRef.current?.focus(), 120);
             return () => clearTimeout(id);
         }
-    }, [assignment]);
+    }, [course]);
 
-    if (!assignment) return null;
+    if (!course) return null;
 
     const send = async () => {
         const question = input.trim();
@@ -55,7 +55,7 @@ const AskAIModal = ({ assignment, onClose }) => {
         setLoading(true);
 
         try {
-            const { data } = await aiApi.chat(assignment.id, question);
+            const { data } = await aiApi.chatCourse(course.id, question);
             const sources = data.sources || [];
 
             setMessages((prev) => [
@@ -96,8 +96,8 @@ const AskAIModal = ({ assignment, onClose }) => {
         <Modal
             open
             onClose={onClose}
-            title="Ask AI about this assignment"
-            description={assignment.title}
+            title="Ask AI about this course"
+            description={course.name}
             footer={
                 <Button variant="secondary" onClick={onClose}>
                     Close
@@ -148,7 +148,7 @@ const AskAIModal = ({ assignment, onClose }) => {
                         value={input}
                         onChange={(event) => setInput(event.target.value)}
                         onKeyDown={onKeyDown}
-                        placeholder="Ask about the deadline, link, or details…"
+                        placeholder="Ask about the professor, assignments, or course…"
                         disabled={loading}
                         className="flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2.5 text-sm leading-5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:bg-line-soft"
                         style={{ height: "42px", maxHeight: "120px" }}
@@ -213,4 +213,4 @@ const MessageRow = ({ message }) => {
     );
 };
 
-export default AskAIModal;
+export default AskCourseAIModal;

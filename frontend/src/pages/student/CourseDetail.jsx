@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { courseApi } from "../../api/endpoints.js";
+import { courseApi, submissionApi } from "../../api/endpoints.js";
 import { readError } from "../../api/client.js";
-import { submissionApi } from "../../api/endpoints.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
-import Badge from "../../components/ui/Badge.jsx";
+import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
 import AssignmentCard from "./AssignmentCard.jsx";
 import ConfirmSubmissionModal from "./ConfirmSubmissionModal.jsx";
-import AskAIModal from "./AskAIModal.jsx";
+import AskCourseAIModal from "./AskCourseAIModal.jsx";
 
 const CourseDetail = () => {
     const { courseId } = useParams();
@@ -20,7 +19,7 @@ const CourseDetail = () => {
     const [error, setError] = useState("");
 
     const [active, setActive] = useState(null);
-    const [asking, setAsking] = useState(null);
+    const [askingCourse, setAskingCourse] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -36,7 +35,9 @@ const CourseDetail = () => {
                         .status(assignment.id)
                         .then(({ data: status }) => ({
                             submitted: Boolean(status.submitted),
-                            isGroupAssignment: Boolean(status.is_group_assignment),
+                            isGroupAssignment: Boolean(
+                                status.is_group_assignment
+                            ),
                             isLeader: Boolean(status.is_leader),
                             canConfirm: status.can_confirm !== false,
                             group: status.group || null
@@ -83,8 +84,6 @@ const CourseDetail = () => {
     if (error) return <ErrorState message={error} onRetry={load} />;
     if (!course) return null;
 
-    const submittedCount = assignments.filter((a) => a.submitted).length;
-
     return (
         <>
             <Link
@@ -103,9 +102,13 @@ const CourseDetail = () => {
                         : "Course assignments"
                 }
                 action={
-                    <Badge tone="accent">
-                        {submittedCount} / {assignments.length} submitted
-                    </Badge>
+                    <Button
+                        variant="accent"
+                        size="sm"
+                        onClick={() => setAskingCourse(true)}
+                    >
+                        ✦ Ask AI about this course
+                    </Button>
                 }
             />
 
@@ -133,7 +136,7 @@ const CourseDetail = () => {
                             key={assignment.id}
                             assignment={assignment}
                             onConfirm={setActive}
-                            onAskAI={setAsking}
+                            onAskAI={() => setAskingCourse(true)}
                         />
                     ))}
                 </div>
@@ -145,9 +148,9 @@ const CourseDetail = () => {
                 onConfirmed={markSubmitted}
             />
 
-            <AskAIModal
-                assignment={asking}
-                onClose={() => setAsking(null)}
+            <AskCourseAIModal
+                course={askingCourse ? course : null}
+                onClose={() => setAskingCourse(false)}
             />
         </>
     );

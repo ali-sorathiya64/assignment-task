@@ -55,5 +55,7 @@ export const analyticsApi = {
 
 export const aiApi = {
     chat: (assignmentId, question) =>
-        api.post(`/api/ai/chat/${assignmentId}`, { question })
+        api.post(`/api/ai/chat/${assignmentId}`, { question }),
+    chatCourse: (courseId, question) =>
+        api.post(`/api/ai/chat/course/${courseId}`, { question })
 };
