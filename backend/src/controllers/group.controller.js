@@ -27,9 +27,9 @@ export const createGroup = async (req, res) => {
         }
 
         const groupResult = await pool.query(
-            `INSERT INTO groups (name, created_by)
-             VALUES ($1, $2)
-             RETURNING id, name, created_by, created_at`,
+            `INSERT INTO groups (name, created_by, leader_id)
+             VALUES ($1, $2, $2)
+             RETURNING id, name, created_by, leader_id, created_at`,
             [name.trim(), req.user.id]
         );
 
@@ -55,7 +55,6 @@ export const createGroup = async (req, res) => {
         });
     }
 };
-
 
 export const addMember = async (req, res) => {
     try {
@@ -158,6 +157,7 @@ export const addMember = async (req, res) => {
         });
     }
 };
+
 export const getMyGroups = async (req, res) => {
     try {
         const result = await pool.query(
@@ -165,14 +165,18 @@ export const getMyGroups = async (req, res) => {
                 g.id,
                 g.name,
                 g.created_by,
+                g.leader_id,
                 g.created_at,
+                leader.name AS leader_name,
+                leader.email AS leader_email,
                 COALESCE(
                     json_agg(
                         json_build_object(
                             'id', u.id,
                             'name', u.name,
                             'email', u.email,
-                            'role', u.role
+                            'role', u.role,
+                            'is_leader', (u.id = g.leader_id)
                         )
                         ORDER BY u.id
                     ) FILTER (WHERE u.id IS NOT NULL),
@@ -182,8 +186,9 @@ export const getMyGroups = async (req, res) => {
              JOIN group_members gm ON gm.group_id = g.id
              LEFT JOIN group_members gm2 ON gm2.group_id = g.id
              LEFT JOIN users u ON u.id = gm2.user_id
+             LEFT JOIN users leader ON leader.id = g.leader_id
              WHERE gm.user_id = $1
-             GROUP BY g.id
+             GROUP BY g.id, leader.name, leader.email
              ORDER BY g.created_at DESC`,
             [req.user.id]
         );
@@ -209,13 +214,17 @@ export const getAllGroups = async (req, res) => {
                 g.id,
                 g.name,
                 g.created_by,
+                g.leader_id,
                 g.created_at,
+                leader.name AS leader_name,
+                leader.email AS leader_email,
                 COALESCE(
                     json_agg(
                         json_build_object(
                             'id', u.id,
                             'name', u.name,
-                            'email', u.email
+                            'email', u.email,
+                            'is_leader', (u.id = g.leader_id)
                         )
                         ORDER BY u.id
                     ) FILTER (WHERE u.id IS NOT NULL),
@@ -226,7 +235,8 @@ export const getAllGroups = async (req, res) => {
                 ON gm.group_id = g.id
              LEFT JOIN users u
                 ON u.id = gm.user_id
-             GROUP BY g.id
+             LEFT JOIN users leader ON leader.id = g.leader_id
+             GROUP BY g.id, leader.name, leader.email
              ORDER BY g.created_at DESC`
         );
 

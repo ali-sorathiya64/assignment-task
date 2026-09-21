@@ -11,7 +11,9 @@ export const getAssignmentProgress = async (req, res) => {
                 description,
                 due_date,
                 onedrive_link,
-                is_global
+                is_global,
+                submission_type,
+                course_id
              FROM assignments
              WHERE id = $1`,
             [assignmentId]
@@ -36,6 +38,7 @@ export const getAssignmentProgress = async (req, res) => {
                     u.email AS student_email,
                     gm.group_id,
                     g.name AS group_name,
+                    g.leader_id,
                     COALESCE(s.confirmed, false) AS submitted,
                     s.confirmed_at
                  FROM users u
@@ -58,6 +61,7 @@ export const getAssignmentProgress = async (req, res) => {
                     u.email AS student_email,
                     g.id AS group_id,
                     g.name AS group_name,
+                    g.leader_id,
                     COALESCE(s.confirmed, false) AS submitted,
                     s.confirmed_at
                  FROM users u
@@ -84,17 +88,60 @@ export const getAssignmentProgress = async (req, res) => {
                             WHERE ag.assignment_id = $1
                               AND agm.user_id = u.id
                         )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM course_students cs
+                            WHERE cs.course_id = $2
+                              AND cs.student_id = u.id
+                        )
                    )
                  ORDER BY u.id`,
-                [assignmentId]
+                [assignmentId, assignment.course_id]
             );
         }
 
-        const totalStudents = result.rows.length;
-        const submittedStudents = result.rows.filter(
-            (student) => student.submitted
-        ).length;
+        let students = result.rows;
 
+        if (assignment.submission_type === "group") {
+            const groupSubs = await pool.query(
+                `SELECT group_id, confirmed, confirmed_at
+                 FROM submissions
+                 WHERE assignment_id = $1
+                   AND group_id IS NOT NULL`,
+                [assignmentId]
+            );
+
+            const byGroup = new Map();
+
+            for (const row of groupSubs.rows) {
+                byGroup.set(row.group_id, {
+                    confirmed: row.confirmed,
+                    confirmed_at: row.confirmed_at
+                });
+            }
+
+            students = result.rows.map((row) => {
+                if (!row.group_id) {
+                    return row;
+                }
+
+                const groupStatus = byGroup.get(row.group_id);
+
+                if (groupStatus && groupStatus.confirmed) {
+                    return {
+                        ...row,
+                        submitted: true,
+                        confirmed_at:
+                            row.confirmed_at || groupStatus.confirmed_at
+                    };
+                }
+
+                return row;
+            });
+        }
+
+        const totalStudents = students.length;
+        const submittedStudents = students.filter((s) => s.submitted).length;
         const pendingStudents = totalStudents - submittedStudents;
 
         return res.status(200).json({
@@ -105,7 +152,7 @@ export const getAssignmentProgress = async (req, res) => {
                 submitted_students: submittedStudents,
                 pending_students: pendingStudents
             },
-            students: result.rows
+            students
         });
     } catch (error) {
         console.error("Get assignment progress error:", error);

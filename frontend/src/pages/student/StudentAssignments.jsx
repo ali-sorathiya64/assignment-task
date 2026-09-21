@@ -109,10 +109,7 @@ const StudentAssignments = () => {
                 onConfirmed={markSubmitted}
             />
 
-            <AskAIModal
-                assignment={asking}
-                onClose={() => setAsking(null)}
-            />
+            <AskAIModal assignment={asking} onClose={() => setAsking(null)} />
         </>
     );
 };

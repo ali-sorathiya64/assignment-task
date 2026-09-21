@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useStudentAssignments } from "../../hooks/useStudentAssignments.js";
-import { groupApi } from "../../api/endpoints.js";
-import { dueLabel, formatDate } from "../../api/format.js";
+import { courseApi, groupApi } from "../../api/endpoints.js";
+import { dueLabel, formatDate, initials } from "../../api/format.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Progress from "../../components/ui/Progress.jsx";
-import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
+import { ErrorState, Spinner } from "../../components/ui/States.jsx";
 import ConfirmSubmissionModal from "./ConfirmSubmissionModal.jsx";
 import AskAIModal from "./AskAIModal.jsx";
 
 const StudentDashboard = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const {
         assignments,
         loading,
@@ -26,6 +27,8 @@ const StudentDashboard = () => {
     } = useStudentAssignments();
 
     const [groups, setGroups] = useState([]);
+    const [courses, setCourses] = useState([]);
+    const [coursesLoading, setCoursesLoading] = useState(true);
     const [active, setActive] = useState(null);
     const [asking, setAsking] = useState(null);
 
@@ -34,6 +37,19 @@ const StudentDashboard = () => {
             .myGroups()
             .then(({ data }) => setGroups(data.groups || []))
             .catch(() => setGroups([]));
+    }, []);
+
+    useEffect(() => {
+        setCoursesLoading(true);
+
+        courseApi
+            .myEnrolled()
+            .then(({ data }) => setCourses(data.courses || []))
+            .catch((err) => {
+                console.error("Courses load failed:", err?.message);
+                setCourses([]);
+            })
+            .finally(() => setCoursesLoading(false));
     }, []);
 
     const total = assignments.length;
@@ -50,7 +66,7 @@ const StudentDashboard = () => {
             <PageHeader
                 eyebrow="Student"
                 title={`Hey, ${firstName}`}
-                subtitle="Your assignments, groups, and progress at a glance."
+                subtitle="Your courses, assignments, and progress at a glance."
                 action={
                     <Link to="/student/assignments">
                         <Button variant="accent" size="sm">
@@ -64,9 +80,17 @@ const StudentDashboard = () => {
             {!loading && error && <ErrorState message={error} onRetry={reload} />}
 
             {!loading && !error && (
-                <div className="space-y-6">
+                <div className="space-y-8">
+                    {/* ---- Row 1: progress + side stats ---- */}
                     <div className="grid gap-4 lg:grid-cols-3">
-                        <Card className="lg:col-span-2 px-6 py-7">
+                        <Card className="relative overflow-hidden lg:col-span-2 px-6 py-7">
+                            <div
+                                className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-[0.04]"
+                                style={{
+                                    background:
+                                        "radial-gradient(circle, var(--color-accent) 0%, transparent 70%)"
+                                }}
+                            />
                             <div className="flex items-start justify-between gap-6">
                                 <div className="min-w-0 flex-1">
                                     <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">
@@ -89,7 +113,11 @@ const StudentDashboard = () => {
                                     <div className="mt-6">
                                         <Progress
                                             value={completion}
-                                            tone={completion === 100 ? "success" : "accent"}
+                                            tone={
+                                                completion === 100
+                                                    ? "success"
+                                                    : "accent"
+                                            }
                                         />
                                         <p className="mt-2 text-xs text-ink-faint">
                                             {completion}% complete
@@ -99,7 +127,10 @@ const StudentDashboard = () => {
 
                                 <div className="hidden shrink-0 sm:block">
                                     <div className="relative grid h-24 w-24 place-items-center">
-                                        <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
+                                        <svg
+                                            className="h-24 w-24 -rotate-90"
+                                            viewBox="0 0 100 100"
+                                        >
                                             <circle
                                                 cx="50"
                                                 cy="50"
@@ -161,11 +192,146 @@ const StudentDashboard = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <div className="mb-3 flex items-end justify-between">
-                            <h2 className="font-display text-base font-bold tracking-tight text-ink">
-                                Next up
-                            </h2>
+                    {/* ---- Row 2: My Courses ---- */}
+                    <section>
+                        <div className="mb-4 flex items-end justify-between">
+                            <div>
+                                <h2 className="font-display text-lg font-bold tracking-tight text-ink">
+                                    My courses
+                                </h2>
+                                <p className="mt-0.5 text-xs text-ink-muted">
+                                    Courses you're enrolled in
+                                </p>
+                            </div>
+                            {courses.length > 0 && (
+                                <span className="text-xs font-medium text-ink-faint">
+                                    {courses.length}{" "}
+                                    {courses.length === 1 ? "course" : "courses"}
+                                </span>
+                            )}
+                        </div>
+
+                        {coursesLoading ? (
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {[0, 1, 2].map((i) => (
+                                    <Card
+                                        key={i}
+                                        className="h-40 animate-pulse px-5 py-5"
+                                    >
+                                        <div className="h-5 w-16 rounded bg-line-soft" />
+                                        <div className="mt-3 h-4 w-3/4 rounded bg-line-soft" />
+                                        <div className="mt-2 h-3 w-1/2 rounded bg-line-soft" />
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : courses.length === 0 ? (
+                            <Card className="px-6 py-12 text-center">
+                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+                                    <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                </div>
+                                <p className="font-display text-lg font-bold text-ink">
+                                    No courses yet
+                                </p>
+                                <p className="mx-auto mt-1 max-w-sm text-sm text-ink-muted">
+                                    Once your professor enrolls you in a course,
+                                    it will show up here.
+                                </p>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {courses.map((course) => (
+                                    <button
+                                        key={course.id}
+                                        type="button"
+                                        onClick={() =>
+                                            navigate(
+                                                `/student/courses/${course.id}`
+                                            )
+                                        }
+                                        className="group text-left"
+                                    >
+                                        <Card
+                                            hover
+                                            className="relative h-full overflow-hidden px-5 py-5 transition-all duration-200 group-hover:-translate-y-0.5"
+                                        >
+                                            <span className="absolute left-0 top-0 h-full w-1 bg-accent" />
+
+                                            <div className="flex items-start justify-between gap-3">
+                                                <Badge tone="accent">
+                                                    {course.code}
+                                                </Badge>
+                                                <svg
+                                                    className="h-4 w-4 -translate-x-1 text-ink-faint opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <line
+                                                        x1="5"
+                                                        y1="12"
+                                                        x2="19"
+                                                        y2="12"
+                                                    />
+                                                    <polyline points="12 5 19 12 12 19" />
+                                                </svg>
+                                            </div>
+
+                                            <h3 className="mt-4 font-display text-base font-bold leading-snug tracking-tight text-ink line-clamp-2">
+                                                {course.name}
+                                            </h3>
+
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent">
+                                                    {initials(
+                                                        course.professor_name
+                                                    )}
+                                                </span>
+                                                <span className="truncate text-xs text-ink-muted">
+                                                    {course.professor_name}
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-4 flex items-center justify-between border-t border-line-soft pt-3">
+                                                <span className="text-[11px] font-medium uppercase tracking-wider text-ink-faint">
+                                                    Assignments
+                                                </span>
+                                                <span className="font-sans text-sm font-semibold tabular-nums text-ink">
+                                                    {course.assignment_count}
+                                                </span>
+                                            </div>
+                                        </Card>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* ---- Row 3: Next up ---- */}
+                    <section>
+                        <div className="mb-4 flex items-end justify-between">
+                            <div>
+                                <h2 className="font-display text-lg font-bold tracking-tight text-ink">
+                                    Next up
+                                </h2>
+                                <p className="mt-0.5 text-xs text-ink-muted">
+                                    Pending assignments sorted by due date
+                                </p>
+                            </div>
                             {upcoming.length > 0 && (
                                 <Link
                                     to="/student/assignments"
@@ -177,7 +343,21 @@ const StudentDashboard = () => {
                         </div>
 
                         {upcoming.length === 0 ? (
-                            <Card className="px-6 py-10 text-center">
+                            <Card className="px-6 py-12 text-center">
+                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
+                                    <svg
+                                        width="22"
+                                        height="22"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </div>
                                 <p className="font-display text-lg font-bold text-ink">
                                     You're all caught up
                                 </p>
@@ -196,16 +376,23 @@ const StudentDashboard = () => {
                                             className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     <p className="truncate font-medium text-ink">
                                                         {a.title}
                                                     </p>
                                                     <Badge tone={due.tone}>
                                                         {due.text}
                                                     </Badge>
+                                                    {a.submission_type ===
+                                                        "group" && (
+                                                        <Badge tone="neutral">
+                                                            Group
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                                 <p className="mt-1 text-xs text-ink-muted">
-                                                    Due {formatDate(a.due_date)}
+                                                    Due{" "}
+                                                    {formatDate(a.due_date)}
                                                 </p>
                                             </div>
 
@@ -230,7 +417,7 @@ const StudentDashboard = () => {
                                 })}
                             </div>
                         )}
-                    </div>
+                    </section>
                 </div>
             )}
 
@@ -240,10 +427,7 @@ const StudentDashboard = () => {
                 onConfirmed={markSubmitted}
             />
 
-            <AskAIModal
-                assignment={asking}
-                onClose={() => setAsking(null)}
-            />
+            <AskAIModal assignment={asking} onClose={() => setAsking(null)} />
         </>
     );
 };

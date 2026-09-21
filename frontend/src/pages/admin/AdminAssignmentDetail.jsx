@@ -23,6 +23,7 @@ const AdminAssignmentDetail = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [filter, setFilter] = useState("all");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -57,6 +58,24 @@ const AdminAssignmentDetail = () => {
         { name: "Pending", value: summary.pending_students, fill: "#e7e5e4" }
     ];
 
+    const counts = {
+        all: students.length,
+        confirmed: students.filter((s) => s.submitted).length,
+        pending: students.filter((s) => !s.submitted).length
+    };
+
+    const visible = students.filter((student) => {
+        if (filter === "confirmed") return student.submitted;
+        if (filter === "pending") return !student.submitted;
+        return true;
+    });
+
+    const filters = [
+        { key: "all", label: "All" },
+        { key: "confirmed", label: "Confirmed" },
+        { key: "pending", label: "Pending" }
+    ];
+
     return (
         <>
             <Link
@@ -86,6 +105,17 @@ const AdminAssignmentDetail = () => {
                     </Button>
                 }
             />
+
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+                <Badge tone="neutral">
+                    {assignment.submission_type === "group"
+                        ? "Group submission"
+                        : "Individual submission"}
+                </Badge>
+                <Badge tone={assignment.is_global ? "accent" : "neutral"}>
+                    {assignment.is_global ? "Whole cohort" : "Targeted"}
+                </Badge>
+            </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
                 <MetricMini label="Assigned" value={summary.total_students} />
@@ -182,14 +212,54 @@ const AdminAssignmentDetail = () => {
                 </Card>
             </div>
 
-            <h2 className="mb-3 mt-8 font-display text-base font-bold tracking-tight text-ink">
-                Student status
-            </h2>
+            <div className="mb-3 mt-8 flex flex-wrap items-end justify-between gap-3">
+                <h2 className="font-display text-base font-bold tracking-tight text-ink">
+                    Student status
+                </h2>
+
+                <div className="inline-flex rounded-md border border-line bg-surface p-1">
+                    {filters.map((item) => (
+                        <button
+                            key={item.key}
+                            onClick={() => setFilter(item.key)}
+                            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                                filter === item.key
+                                    ? "bg-ink text-white"
+                                    : "text-ink-soft hover:text-ink"
+                            }`}
+                        >
+                            {item.label}
+                            <span
+                                className={`ml-1.5 text-[10px] ${
+                                    filter === item.key
+                                        ? "text-white/60"
+                                        : "text-ink-faint"
+                                }`}
+                            >
+                                {counts[item.key]}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {students.length === 0 ? (
                 <EmptyState
                     title="Nobody is assigned yet"
                     description='Use "Assign" on the assignments page to send this to a group or a student.'
+                />
+            ) : visible.length === 0 ? (
+                <EmptyState
+                    title={
+                        filter === "confirmed"
+                            ? "Nobody has confirmed yet"
+                            : "Everyone has confirmed"
+                    }
+                    description={
+                        filter === "confirmed"
+                            ? "Once students acknowledge their submission, they'll appear here."
+                            : "All assigned students have acknowledged this assignment."
+                    }
                 />
             ) : (
                 <Card className="overflow-hidden">
@@ -206,7 +276,7 @@ const AdminAssignmentDetail = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {students.map((student) => (
+                                {visible.map((student) => (
                                     <tr
                                         key={`${student.student_id}-${student.group_id ?? "none"}`}
                                         className="border-b border-line last:border-0"

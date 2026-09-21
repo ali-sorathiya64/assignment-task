@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { assignmentApi } from "../../api/endpoints.js";
+import { assignmentApi, courseApi } from "../../api/endpoints.js";
 import { readError } from "../../api/client.js";
 import { toIso, toLocalInput } from "../../api/format.js";
 import { useToast } from "../../context/ToastContext.jsx";
@@ -11,12 +11,15 @@ const emptyForm = {
     description: "",
     due_date: "",
     onedrive_link: "",
-    is_global: true
+    is_global: true,
+    submission_type: "individual",
+    course_id: ""
 };
 
 const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
     const { push } = useToast();
     const [form, setForm] = useState(emptyForm);
+    const [courses, setCourses] = useState([]);
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
 
@@ -33,10 +36,22 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                       description: assignment.description || "",
                       due_date: toLocalInput(assignment.due_date),
                       onedrive_link: assignment.onedrive_link || "",
-                      is_global: Boolean(assignment.is_global)
+                      is_global: Boolean(assignment.is_global),
+                      submission_type:
+                          assignment.submission_type === "group"
+                              ? "group"
+                              : "individual",
+                      course_id: assignment.course_id
+                          ? String(assignment.course_id)
+                          : ""
                   }
                 : emptyForm
         );
+
+        courseApi
+            .myTaught()
+            .then(({ data }) => setCourses(data.courses || []))
+            .catch(() => setCourses([]));
     }, [open, assignment]);
 
     const change = (event) => {
@@ -59,7 +74,9 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
             description: form.description.trim(),
             due_date: toIso(form.due_date),
             onedrive_link: form.onedrive_link.trim(),
-            is_global: form.is_global
+            is_global: form.is_global,
+            submission_type: form.submission_type,
+            course_id: form.course_id ? Number(form.course_id) : null
         };
 
         try {
@@ -153,6 +170,84 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                         />
                     </div>
                 </div>
+
+                <div>
+                    <label className="label" htmlFor="course_id">
+                        Attach to course
+                    </label>
+                    <select
+                        id="course_id"
+                        name="course_id"
+                        className="field"
+                        value={form.course_id}
+                        onChange={change}
+                    >
+                        <option value="">— No course —</option>
+                        {courses.map((course) => (
+                            <option key={course.id} value={course.id}>
+                                {course.code} · {course.name}
+                            </option>
+                        ))}
+                    </select>
+                    {courses.length === 0 && (
+                        <p className="mt-1.5 text-xs text-ink-faint">
+                            You haven't created any courses yet.
+                        </p>
+                    )}
+                </div>
+
+                <fieldset className="rounded-lg border border-line p-4">
+                    <legend className="px-2 text-xs font-medium uppercase tracking-wider text-ink-muted">
+                        Submission type
+                    </legend>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        {[
+                            {
+                                value: "individual",
+                                label: "Individual",
+                                hint: "Each student confirms their own work"
+                            },
+                            {
+                                value: "group",
+                                label: "Group",
+                                hint: "Only the group leader confirms"
+                            }
+                        ].map((option) => {
+                            const active =
+                                form.submission_type === option.value;
+
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            submission_type: option.value
+                                        }))
+                                    }
+                                    className={`rounded-md border px-3 py-2.5 text-left transition-all ${
+                                        active
+                                            ? "border-accent bg-accent-soft/40"
+                                            : "border-line hover:border-ink-faint"
+                                    }`}
+                                >
+                                    <span
+                                        className={`block text-sm font-medium ${
+                                            active ? "text-accent" : "text-ink"
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-ink-muted">
+                                        {option.hint}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </fieldset>
 
                 <fieldset className="rounded-lg border border-line p-4">
                     <legend className="px-2 text-xs font-medium uppercase tracking-wider text-ink-muted">

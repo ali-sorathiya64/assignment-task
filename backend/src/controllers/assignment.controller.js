@@ -1,6 +1,9 @@
 import pool from "../db/connection.js";
 import { indexAssignment } from "../ai/indexAssignment.js";
 
+// ------------------------------------------------------------
+// POST /api/assignments  (admin)
+// ------------------------------------------------------------
 export const createAssignment = async (req, res) => {
     try {
         const {
@@ -8,7 +11,9 @@ export const createAssignment = async (req, res) => {
             description,
             due_date,
             onedrive_link,
-            is_global
+            is_global,
+            submission_type,
+            course_id
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -32,27 +37,50 @@ export const createAssignment = async (req, res) => {
             });
         }
 
+        const type = submission_type === "group" ? "group" : "individual";
+
+        // If course_id provided, verify the professor owns it
+        if (course_id) {
+            const courseCheck = await pool.query(
+                `SELECT id FROM courses
+                 WHERE id = $1 AND professor_id = $2`,
+                [course_id, req.user.id]
+            );
+
+            if (courseCheck.rows.length === 0) {
+                return res.status(403).json({
+                    success: false,
+                    message: "You do not own this course"
+                });
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO assignments
-        (title, description, due_date, onedrive_link, created_by, is_global)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING
-        id,
-        title,
-        description,
-        due_date,
-        onedrive_link,
-        created_by,
-        is_global,
-        created_at,
-        updated_at`,
+                (title, description, due_date, onedrive_link,
+                 created_by, is_global, submission_type, course_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING
+                id,
+                title,
+                description,
+                due_date,
+                onedrive_link,
+                created_by,
+                is_global,
+                submission_type,
+                course_id,
+                created_at,
+                updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,
                 due_date,
                 onedrive_link.trim(),
                 req.user.id,
-                is_global === true
+                is_global === true,
+                type,
+                course_id || null
             ]
         );
 
@@ -67,10 +95,8 @@ export const createAssignment = async (req, res) => {
             message: "Assignment created successfully",
             assignment: result.rows[0]
         });
-
     } catch (error) {
         console.error("Create assignment error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -78,6 +104,10 @@ export const createAssignment = async (req, res) => {
     }
 };
 
+// ------------------------------------------------------------
+// GET /api/assignments
+// Admin sees all. Student sees: global OR targeted OR course-enrolled
+// ------------------------------------------------------------
 export const getAssignments = async (req, res) => {
     try {
         let result;
@@ -92,6 +122,8 @@ export const getAssignments = async (req, res) => {
                     a.onedrive_link,
                     a.created_by,
                     a.is_global,
+                    a.submission_type,
+                    a.course_id,
                     a.created_at,
                     a.updated_at
                  FROM assignments a
@@ -107,6 +139,8 @@ export const getAssignments = async (req, res) => {
                     a.onedrive_link,
                     a.created_by,
                     a.is_global,
+                    a.submission_type,
+                    a.course_id,
                     a.created_at,
                     a.updated_at
                  FROM assignments a
@@ -125,6 +159,11 @@ export const getAssignments = async (req, res) => {
                     WHERE ast.assignment_id = a.id
                       AND ast.student_id = $1
                  )
+                 OR a.course_id IN (
+                    SELECT cs.course_id
+                    FROM course_students cs
+                    WHERE cs.student_id = $1
+                 )
                  ORDER BY a.due_date ASC`,
                 [req.user.id]
             );
@@ -136,7 +175,6 @@ export const getAssignments = async (req, res) => {
         });
     } catch (error) {
         console.error("Get assignments error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -144,6 +182,9 @@ export const getAssignments = async (req, res) => {
     }
 };
 
+// ------------------------------------------------------------
+// POST /api/assignments/:assignmentId/groups
+// ------------------------------------------------------------
 export const assignToGroup = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -157,9 +198,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         const assignmentResult = await pool.query(
-            `SELECT id, title
-             FROM assignments
-             WHERE id = $1`,
+            `SELECT id, title FROM assignments WHERE id = $1`,
             [assignmentId]
         );
 
@@ -171,9 +210,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         const groupResult = await pool.query(
-            `SELECT id, name
-             FROM groups
-             WHERE id = $1`,
+            `SELECT id, name FROM groups WHERE id = $1`,
             [groupId]
         );
 
@@ -185,8 +222,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         const existingAssignment = await pool.query(
-            `SELECT id
-             FROM assignment_groups
+            `SELECT id FROM assignment_groups
              WHERE assignment_id = $1 AND group_id = $2`,
             [assignmentId, groupId]
         );
@@ -199,8 +235,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO assignment_groups
-                (assignment_id, group_id)
+            `INSERT INTO assignment_groups (assignment_id, group_id)
              VALUES ($1, $2)
              RETURNING id, assignment_id, group_id`,
             [assignmentId, groupId]
@@ -213,7 +248,6 @@ export const assignToGroup = async (req, res) => {
         });
     } catch (error) {
         console.error("Assign assignment to group error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -221,6 +255,9 @@ export const assignToGroup = async (req, res) => {
     }
 };
 
+// ------------------------------------------------------------
+// POST /api/assignments/:assignmentId/students
+// ------------------------------------------------------------
 export const assignToStudent = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -234,9 +271,7 @@ export const assignToStudent = async (req, res) => {
         }
 
         const assignmentResult = await pool.query(
-            `SELECT id, title
-             FROM assignments
-             WHERE id = $1`,
+            `SELECT id, title FROM assignments WHERE id = $1`,
             [assignmentId]
         );
 
@@ -248,8 +283,7 @@ export const assignToStudent = async (req, res) => {
         }
 
         const studentResult = await pool.query(
-            `SELECT id, name, email, role
-             FROM users
+            `SELECT id, name, email, role FROM users
              WHERE id = $1 AND role = 'student'`,
             [studentId]
         );
@@ -262,10 +296,8 @@ export const assignToStudent = async (req, res) => {
         }
 
         const existingAssignment = await pool.query(
-            `SELECT id
-             FROM assignment_students
-             WHERE assignment_id = $1
-               AND student_id = $2`,
+            `SELECT id FROM assignment_students
+             WHERE assignment_id = $1 AND student_id = $2`,
             [assignmentId, studentId]
         );
 
@@ -277,8 +309,7 @@ export const assignToStudent = async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO assignment_students
-                (assignment_id, student_id)
+            `INSERT INTO assignment_students (assignment_id, student_id)
              VALUES ($1, $2)
              RETURNING id, assignment_id, student_id`,
             [assignmentId, studentId]
@@ -291,7 +322,6 @@ export const assignToStudent = async (req, res) => {
         });
     } catch (error) {
         console.error("Assign assignment to student error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -299,7 +329,9 @@ export const assignToStudent = async (req, res) => {
     }
 };
 
-
+// ------------------------------------------------------------
+// PUT /api/assignments/:assignmentId
+// ------------------------------------------------------------
 export const updateAssignment = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -308,7 +340,9 @@ export const updateAssignment = async (req, res) => {
             description,
             due_date,
             onedrive_link,
-            is_global
+            is_global,
+            submission_type,
+            course_id
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -333,9 +367,7 @@ export const updateAssignment = async (req, res) => {
         }
 
         const existingAssignment = await pool.query(
-            `SELECT id
-             FROM assignments
-             WHERE id = $1`,
+            `SELECT id FROM assignments WHERE id = $1`,
             [assignmentId]
         );
 
@@ -346,32 +378,55 @@ export const updateAssignment = async (req, res) => {
             });
         }
 
+        const type = submission_type === "group" ? "group" : "individual";
+
+        if (course_id) {
+            const courseCheck = await pool.query(
+                `SELECT id FROM courses
+                 WHERE id = $1 AND professor_id = $2`,
+                [course_id, req.user.id]
+            );
+
+            if (courseCheck.rows.length === 0) {
+                return res.status(403).json({
+                    success: false,
+                    message: "You do not own this course"
+                });
+            }
+        }
+
         const result = await pool.query(
             `UPDATE assignments
-     SET
-        title = $1,
-        description = $2,
-        due_date = $3,
-        onedrive_link = $4,
-        is_global = $5,
-        updated_at = NOW()
-     WHERE id = $6
-     RETURNING
-        id,
-        title,
-        description,
-        due_date,
-        onedrive_link,
-        created_by,
-        is_global,
-        created_at,
-        updated_at`,
+             SET
+                title = $1,
+                description = $2,
+                due_date = $3,
+                onedrive_link = $4,
+                is_global = $5,
+                submission_type = $6,
+                course_id = $7,
+                updated_at = NOW()
+             WHERE id = $8
+             RETURNING
+                id,
+                title,
+                description,
+                due_date,
+                onedrive_link,
+                created_by,
+                is_global,
+                submission_type,
+                course_id,
+                created_at,
+                updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,
                 due_date,
                 onedrive_link.trim(),
                 is_global === true,
+                type,
+                course_id || null,
                 assignmentId
             ]
         );
@@ -389,7 +444,6 @@ export const updateAssignment = async (req, res) => {
         });
     } catch (error) {
         console.error("Update assignment error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"

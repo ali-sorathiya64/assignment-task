@@ -19,15 +19,29 @@ export const useStudentAssignments = () => {
                 list.map((assignment) =>
                     submissionApi
                         .status(assignment.id)
-                        .then(({ data: status }) => Boolean(status.submitted))
-                        .catch(() => false)
+                        .then(({ data: status }) => ({
+                            submitted: Boolean(status.submitted),
+                            isGroupAssignment: Boolean(
+                                status.is_group_assignment
+                            ),
+                            isLeader: Boolean(status.is_leader),
+                            canConfirm: status.can_confirm !== false,
+                            group: status.group || null
+                        }))
+                        .catch(() => ({
+                            submitted: false,
+                            isGroupAssignment: false,
+                            isLeader: false,
+                            canConfirm: true,
+                            group: null
+                        }))
                 )
             );
 
             setAssignments(
                 list.map((assignment, index) => ({
                     ...assignment,
-                    submitted: statuses[index]
+                    ...statuses[index]
                 }))
             );
         } catch (err) {

@@ -7,6 +7,7 @@ import Register from "./pages/Register.jsx";
 import StudentDashboard from "./pages/student/StudentDashboard.jsx";
 import StudentAssignments from "./pages/student/StudentAssignments.jsx";
 import StudentGroups from "./pages/student/StudentGroups.jsx";
+import CourseDetail from "./pages/student/CourseDetail.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminAssignments from "./pages/admin/AdminAssignments.jsx";
 import AdminAssignmentDetail from "./pages/admin/AdminAssignmentDetail.jsx";
@@ -20,7 +21,9 @@ const Landing = () => {
     if (booting) return <Spinner label="Starting up" />;
     if (!user) return <Navigate to="/login" replace />;
 
-    return <Navigate to={user.role === "admin" ? "/admin" : "/student"} replace />;
+    return (
+        <Navigate to={user.role === "admin" ? "/admin" : "/student"} replace />
+    );
 };
 
 const App = () => (
@@ -40,6 +43,7 @@ const App = () => (
             <Route index element={<StudentDashboard />} />
             <Route path="assignments" element={<StudentAssignments />} />
             <Route path="groups" element={<StudentGroups />} />
+            <Route path="courses/:courseId" element={<CourseDetail />} />
         </Route>
 
         <Route

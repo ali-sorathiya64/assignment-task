@@ -3,7 +3,6 @@ import { aiApi } from "../../api/endpoints.js";
 import { readError } from "../../api/client.js";
 import Button from "../../components/ui/Button.jsx";
 import Modal from "../../components/ui/Modal.jsx";
-import ChatBubble from "../../components/ui/ChatBubble.jsx";
 
 const AskAIModal = ({ assignment, onClose }) => {
     const [messages, setMessages] = useState([]);
@@ -14,14 +13,13 @@ const AskAIModal = ({ assignment, onClose }) => {
     const scrollRef = useRef(null);
     const inputRef = useRef(null);
 
-    // Reset when assignment changes
     useEffect(() => {
         if (!assignment) return;
 
         setMessages([
             {
                 role: "assistant",
-                content: `Hi! Ask me anything about "${assignment.title}".`
+                content: `Hi! Ask me anything about "${assignment.title}" — I know its description, deadline, submission link, and type.`
             }
         ]);
         setInput("");
@@ -29,17 +27,15 @@ const AskAIModal = ({ assignment, onClose }) => {
         setLoading(false);
     }, [assignment]);
 
-    // Auto-scroll to bottom when messages change
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
     }, [messages, loading]);
 
-    // Auto-focus input when modal opens
     useEffect(() => {
         if (assignment) {
-            setTimeout(() => inputRef.current?.focus(), 100);
+            const id = setTimeout(() => inputRef.current?.focus(), 120);
+            return () => clearTimeout(id);
         }
     }, [assignment]);
 
@@ -52,19 +48,18 @@ const AskAIModal = ({ assignment, onClose }) => {
         setError("");
         setInput("");
 
-        setMessages((current) => [
-            ...current,
+        setMessages((prev) => [
+            ...prev,
             { role: "user", content: question }
         ]);
         setLoading(true);
 
         try {
             const { data } = await aiApi.chat(assignment.id, question);
-
             const sources = data.sources || [];
 
-            setMessages((current) => [
-                ...current,
+            setMessages((prev) => [
+                ...prev,
                 {
                     role: "assistant",
                     content: data.answer || "No response received.",
@@ -78,12 +73,11 @@ const AskAIModal = ({ assignment, onClose }) => {
             );
             setError(message);
 
-            setMessages((current) => [
-                ...current,
+            setMessages((prev) => [
+                ...prev,
                 {
                     role: "assistant",
-                    content: "Sorry, I couldn't process that. Try again.",
-                    error: true
+                    content: "Sorry, I couldn't process that. Try again."
                 }
             ]);
         } finally {
@@ -102,7 +96,7 @@ const AskAIModal = ({ assignment, onClose }) => {
         <Modal
             open
             onClose={onClose}
-            title="Ask AI"
+            title="Ask AI about this assignment"
             description={assignment.title}
             footer={
                 <Button variant="secondary" onClick={onClose}>
@@ -110,92 +104,109 @@ const AskAIModal = ({ assignment, onClose }) => {
                 </Button>
             }
         >
-            <div className="flex flex-col" style={{ height: "min(60vh, 480px)" }}>
-                {/* Messages */}
+            <div className="flex flex-col gap-3">
                 <div
                     ref={scrollRef}
-                    className="flex-1 space-y-3 overflow-y-auto px-1 pb-4"
+                    className="max-h-[52vh] min-h-[260px] space-y-4 overflow-y-auto rounded-md bg-canvas px-4 py-4"
                 >
                     {messages.map((message, index) => (
-                        <div key={index} className="space-y-2">
-                            <ChatBubble role={message.role}>
-                                {message.content}
-                            </ChatBubble>
-
-                            {message.role === "assistant" &&
-                                message.sources &&
-                                message.sources.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 pl-1">
-                                        {message.sources.map((source, i) => (
-                                            <span
-                                                key={i}
-                                                className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-medium text-ink-muted"
-                                            >
-                                                {source.title}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                        </div>
+                        <MessageRow key={index} message={message} />
                     ))}
 
                     {loading && (
-                        <ChatBubble role="assistant">
-                            <span className="inline-flex items-center gap-2 text-ink-muted">
-                                <span className="flex gap-1">
-                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted" />
-                                    <span
-                                        className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
-                                        style={{ animationDelay: "150ms" }}
-                                    />
-                                    <span
-                                        className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
-                                        style={{ animationDelay: "300ms" }}
-                                    />
+                        <div className="flex justify-start">
+                            <div className="rounded-2xl rounded-tl-sm bg-surface px-4 py-2.5 shadow-xs">
+                                <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
+                                    <span className="flex gap-1">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted" />
+                                        <span
+                                            className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
+                                            style={{ animationDelay: "150ms" }}
+                                        />
+                                        <span
+                                            className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
+                                            style={{ animationDelay: "300ms" }}
+                                        />
+                                    </span>
+                                    Thinking
                                 </span>
-                                Thinking
-                            </span>
-                        </ChatBubble>
+                            </div>
+                        </div>
                     )}
                 </div>
 
-                {/* Error */}
                 {error && (
-                    <p className="mb-2 rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">
+                    <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">
                         {error}
                     </p>
                 )}
 
-                {/* Input */}
-                <div className="border-t border-line pt-3">
-                    <div className="flex items-end gap-2">
-                        <textarea
-                            ref={inputRef}
-                            rows={1}
-                            value={input}
-                            onChange={(event) => setInput(event.target.value)}
-                            onKeyDown={onKeyDown}
-                            placeholder="Ask a question about this assignment..."
-                            disabled={loading}
-                            className="field resize-none py-2.5"
-                            style={{ minHeight: "40px", maxHeight: "120px" }}
-                        />
-                        <Button
-                            variant="accent"
-                            onClick={send}
-                            disabled={!input.trim() || loading}
-                            loading={loading}
-                            className="shrink-0"
-                        >
-                            Send
-                        </Button>
-                    </div>
-                    <p className="mt-1.5 text-[10px] text-ink-faint">
-                        Enter to send · Shift + Enter for a new line
-                    </p>
+                <div className="flex items-end gap-2">
+                    <textarea
+                        ref={inputRef}
+                        rows={1}
+                        value={input}
+                        onChange={(event) => setInput(event.target.value)}
+                        onKeyDown={onKeyDown}
+                        placeholder="Ask about the deadline, link, or details…"
+                        disabled={loading}
+                        className="field max-h-32 min-h-[42px] flex-1 resize-none py-2.5 leading-relaxed"
+                    />
+                    <Button
+                        variant="accent"
+                        onClick={send}
+                        disabled={!input.trim() || loading}
+                        className="h-[42px] shrink-0"
+                    >
+                        Send
+                    </Button>
                 </div>
+
+                <p className="text-[10px] text-ink-faint">
+                    Enter to send · Shift + Enter for a new line
+                </p>
             </div>
         </Modal>
+    );
+};
+
+const MessageRow = ({ message }) => {
+    const isUser = message.role === "user";
+
+    if (isUser) {
+        return (
+            <div className="flex justify-end">
+                <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-ink px-4 py-2.5 text-sm leading-relaxed text-white shadow-xs">
+                    {message.content}
+                </div>
+            </div>
+        );
+    }
+
+    const hasSources =
+        message.sources && Array.isArray(message.sources) && message.sources.length > 0;
+
+    return (
+        <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-surface px-4 py-3 shadow-xs">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                    {message.content}
+                </p>
+
+                {hasSources && (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-line-soft pt-2.5">
+                        {message.sources.map((source, i) => (
+                            <span
+                                key={i}
+                                className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent"
+                            >
+                                {source.title}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };
 

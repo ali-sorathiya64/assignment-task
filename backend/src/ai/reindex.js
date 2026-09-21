@@ -3,9 +3,26 @@ import { pineconeIndex } from "./vectorStore.js";
 import embeddings from "./embeddings.js";
 import { buildAssignmentText, NAMESPACE } from "./indexAssignment.js";
 
-const ingestAssignments = async () => {
-    console.log("1. Starting ingestion...");
+const run = async () => {
+    console.log("=== Reindex: full reset ===");
 
+    console.log("1. Deleting existing namespace:", NAMESPACE);
+    try {
+        await pineconeIndex.namespace(NAMESPACE).deleteAll();
+        console.log("   Deleted.");
+    } catch (err) {
+        console.log("   Skipped (namespace may be empty):", err.message);
+    }
+
+    console.log("2. Also deleting default namespace leftovers...");
+    try {
+        await pineconeIndex.namespace("").deleteAll();
+        console.log("   Deleted.");
+    } catch (err) {
+        console.log("   Skipped:", err.message);
+    }
+
+    console.log("3. Loading assignments from PostgreSQL...");
     const result = await pool.query(`
         SELECT
             id,
@@ -20,10 +37,10 @@ const ingestAssignments = async () => {
         ORDER BY id
     `);
 
-    console.log(`2. PostgreSQL returned ${result.rows.length} assignments`);
+    console.log(`   Found ${result.rows.length} assignments.`);
 
     if (result.rows.length === 0) {
-        console.log("Nothing to ingest. Exiting.");
+        console.log("Nothing to index. Exiting.");
         return;
     }
 
@@ -45,20 +62,21 @@ const ingestAssignments = async () => {
             }
         });
 
-        console.log(`3. Embedded assignment ${assignment.id}`);
+        console.log(`4. Embedded assignment ${assignment.id}`);
     }
 
-    console.log("4. Connecting to Pinecone...");
-    await pineconeIndex.describeIndexStats();
-    console.log("5. Pinecone connected");
-
-    console.log(`6. Upserting ${vectors.length} vectors to "${NAMESPACE}"...`);
+    console.log(`5. Upserting ${vectors.length} vectors to "${NAMESPACE}"...`);
     await pineconeIndex.namespace(NAMESPACE).upsert(vectors);
-    console.log("7. Ingestion completed successfully");
+
+    console.log("6. Verifying...");
+    const stats = await pineconeIndex.describeIndexStats();
+    console.log(JSON.stringify(stats, null, 2));
+
+    console.log("=== Reindex complete ===");
 };
 
-ingestAssignments().catch((error) => {
-    console.error("Ingestion failed:");
-    console.error(error);
+run().catch((err) => {
+    console.error("Reindex failed:");
+    console.error(err);
     process.exit(1);
 });

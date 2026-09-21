@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { assignmentApi } from "../../api/endpoints.js";
+import { Link, useSearchParams } from "react-router-dom";
+import { assignmentApi, courseApi } from "../../api/endpoints.js";
 import { readError } from "../../api/client.js";
 import { dueLabel, formatDate } from "../../api/format.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
@@ -12,7 +12,11 @@ import AssignmentFormModal from "./AssignmentFormModal.jsx";
 import AssignTargetModal from "./AssignTargetModal.jsx";
 
 const AdminAssignments = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const courseFilter = searchParams.get("course");
+
     const [assignments, setAssignments] = useState([]);
+    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -25,8 +29,12 @@ const AdminAssignments = () => {
         setError("");
 
         try {
-            const { data } = await assignmentApi.list();
-            setAssignments(data.assignments || []);
+            const [assignmentRes, courseRes] = await Promise.all([
+                assignmentApi.list(),
+                courseApi.myTaught()
+            ]);
+            setAssignments(assignmentRes.data.assignments || []);
+            setCourses(courseRes.data.courses || []);
         } catch (err) {
             setError(readError(err, "Could not load assignments."));
         } finally {
@@ -38,12 +46,35 @@ const AdminAssignments = () => {
         load();
     }, [load]);
 
+    const activeCourse = courseFilter
+        ? courses.find((c) => String(c.id) === String(courseFilter))
+        : null;
+
+    const visible = courseFilter
+        ? assignments.filter(
+              (a) => String(a.course_id) === String(courseFilter)
+          )
+        : assignments;
+
+    const clearFilter = () => {
+        searchParams.delete("course");
+        setSearchParams(searchParams);
+    };
+
     return (
         <>
             <PageHeader
                 eyebrow="Professor"
-                title="Assignments"
-                subtitle="Post work, share the submission link, and track confirmations."
+                title={
+                    activeCourse
+                        ? `${activeCourse.code} · ${activeCourse.name}`
+                        : "Assignments"
+                }
+                subtitle={
+                    activeCourse
+                        ? "Assignments attached to this course."
+                        : "Post work, share the submission link, and track confirmations."
+                }
                 action={
                     <Button
                         variant="accent"
@@ -57,13 +88,36 @@ const AdminAssignments = () => {
                 }
             />
 
+            {activeCourse && (
+                <div className="mb-5 flex items-center gap-3 rounded-md border border-accent/20 bg-accent-soft/40 px-4 py-2.5">
+                    <span className="text-xs font-medium text-accent">
+                        Showing assignments for{" "}
+                        <strong>{activeCourse.code}</strong>
+                    </span>
+                    <button
+                        onClick={clearFilter}
+                        className="ml-auto text-xs font-medium text-accent underline hover:no-underline"
+                    >
+                        Clear filter
+                    </button>
+                </div>
+            )}
+
             {loading && <Spinner label="Loading assignments" />}
             {!loading && error && <ErrorState message={error} onRetry={load} />}
 
-            {!loading && !error && assignments.length === 0 && (
+            {!loading && !error && visible.length === 0 && (
                 <EmptyState
-                    title="No assignments posted"
-                    description="Create your first assignment and send it to the cohort, a group, or a single student."
+                    title={
+                        activeCourse
+                            ? "No assignments in this course"
+                            : "No assignments posted"
+                    }
+                    description={
+                        activeCourse
+                            ? "Create an assignment and attach it to this course to see it here."
+                            : "Create your first assignment and send it to the cohort, a group, or a single student."
+                    }
                     action={
                         <Button
                             variant="accent"
@@ -75,10 +129,17 @@ const AdminAssignments = () => {
                 />
             )}
 
-            {!loading && !error && assignments.length > 0 && (
+            {!loading && !error && visible.length > 0 && (
                 <div className="space-y-2">
-                    {assignments.map((assignment) => {
+                    {visible.map((assignment) => {
                         const due = dueLabel(assignment.due_date);
+                        const linkedCourse = assignment.course_id
+                            ? courses.find(
+                                  (c) =>
+                                      String(c.id) ===
+                                      String(assignment.course_id)
+                              )
+                            : null;
 
                         return (
                             <Card key={assignment.id} hover className="px-5 py-5">
@@ -88,6 +149,11 @@ const AdminAssignments = () => {
                                             <h3 className="font-display text-base font-bold tracking-tight text-ink">
                                                 {assignment.title}
                                             </h3>
+                                            {linkedCourse && (
+                                                <Badge tone="accent">
+                                                    {linkedCourse.code}
+                                                </Badge>
+                                            )}
                                             <Badge
                                                 tone={
                                                     assignment.is_global
@@ -99,7 +165,15 @@ const AdminAssignments = () => {
                                                     ? "Whole cohort"
                                                     : "Targeted"}
                                             </Badge>
-                                            <Badge tone={due.tone}>{due.text}</Badge>
+                                            <Badge tone="neutral">
+                                                {assignment.submission_type ===
+                                                "group"
+                                                    ? "Group"
+                                                    : "Individual"}
+                                            </Badge>
+                                            <Badge tone={due.tone}>
+                                                {due.text}
+                                            </Badge>
                                         </div>
 
                                         {assignment.description && (
@@ -127,7 +201,9 @@ const AdminAssignments = () => {
                                         <Button
                                             variant="secondary"
                                             size="sm"
-                                            onClick={() => setAssigning(assignment)}
+                                            onClick={() =>
+                                                setAssigning(assignment)
+                                            }
                                         >
                                             Assign
                                         </Button>

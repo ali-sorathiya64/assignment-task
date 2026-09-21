@@ -7,11 +7,11 @@ import groupRoutes from "./routes/group.routes.js";
 import assignmentRoutes from "./routes/assignment.routes.js";
 import submissionRoutes from "./routes/submission.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
-import userRoutes from "./routes/user.route.js"
+import userRoutes from "./routes/user.route.js";
 import aiRoutes from "./routes/ai.routes.js";
+import courseRoutes from "./routes/course.routes.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
-
 
 const app = express();
 
@@ -46,7 +46,6 @@ app.get("/api/health", async (req, res) => {
     }
 });
 
-
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
@@ -54,6 +53,7 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/submissions", submissionRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/courses", courseRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

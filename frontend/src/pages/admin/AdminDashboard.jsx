@@ -10,22 +10,33 @@ import {
 import {
     analyticsApi,
     assignmentApi,
+    courseApi,
     groupApi,
     userApi
 } from "../../api/endpoints.js";
 import { readError } from "../../api/client.js";
-import { dueLabel, formatDate } from "../../api/format.js";
+import { dueLabel, formatDate, initials } from "../../api/format.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
 
+const COURSE_ACCENTS = [
+    "bg-violet-500",
+    "bg-sky-500",
+    "bg-rose-500",
+    "bg-amber-500",
+    "bg-emerald-500",
+    "bg-indigo-500"
+];
+
 const AdminDashboard = () => {
     const [state, setState] = useState({
         assignments: [],
         groups: [],
         students: [],
+        courses: [],
         progress: []
     });
     const [loading, setLoading] = useState(true);
@@ -36,13 +47,16 @@ const AdminDashboard = () => {
         setError("");
 
         try {
-            const [assignmentRes, groupRes, studentRes] = await Promise.all([
-                assignmentApi.list(),
-                groupApi.allGroups(),
-                userApi.students()
-            ]);
+            const [assignmentRes, groupRes, studentRes, courseRes] =
+                await Promise.all([
+                    assignmentApi.list(),
+                    groupApi.allGroups(),
+                    userApi.students(),
+                    courseApi.myTaught()
+                ]);
 
             const assignments = assignmentRes.data.assignments || [];
+            const courses = courseRes.data.courses || [];
 
             const progress = await Promise.all(
                 assignments.map((assignment) =>
@@ -52,6 +66,8 @@ const AdminDashboard = () => {
                             id: assignment.id,
                             title: assignment.title,
                             due_date: assignment.due_date,
+                            course_id: assignment.course_id,
+                            submission_type: assignment.submission_type,
                             confirmed: data.summary.submitted_students,
                             pending: data.summary.pending_students,
                             total: data.summary.total_students
@@ -64,6 +80,7 @@ const AdminDashboard = () => {
                 assignments,
                 groups: groupRes.data.groups || [],
                 students: studentRes.data.students || [],
+                courses,
                 progress: progress.filter(Boolean)
             });
         } catch (err) {
@@ -80,7 +97,7 @@ const AdminDashboard = () => {
     if (loading) return <Spinner label="Loading" />;
     if (error) return <ErrorState message={error} onRetry={load} />;
 
-    const { assignments, groups, students, progress } = state;
+    const { assignments, groups, students, courses, progress } = state;
 
     const totalConfirmed = progress.reduce((s, p) => s + p.confirmed, 0);
     const totalExpected = progress.reduce((s, p) => s + p.total, 0);
@@ -90,12 +107,8 @@ const AdminDashboard = () => {
 
     const chartData = progress.slice(0, 8).map((p) => ({
         name:
-            p.title.length > 12
-                ? `${p.title.slice(0, 11)}…`
-                : p.title,
-        value: p.total
-            ? Math.round((p.confirmed / p.total) * 100)
-            : 0,
+            p.title.length > 12 ? `${p.title.slice(0, 11)}…` : p.title,
+        value: p.total ? Math.round((p.confirmed / p.total) * 100) : 0,
         confirmed: p.confirmed,
         total: p.total
     }));
@@ -104,12 +117,31 @@ const AdminDashboard = () => {
         .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
         .slice(0, 4);
 
+    const coursesWithStats = courses.map((course) => {
+        const courseProgress = progress.filter(
+            (p) => p.course_id === course.id
+        );
+        const courseConfirmed = courseProgress.reduce(
+            (s, p) => s + p.confirmed,
+            0
+        );
+        const courseExpected = courseProgress.reduce(
+            (s, p) => s + p.total,
+            0
+        );
+        const rate = courseExpected
+            ? Math.round((courseConfirmed / courseExpected) * 100)
+            : 0;
+
+        return { ...course, confirmed: courseConfirmed, expected: courseExpected, rate };
+    });
+
     return (
         <>
             <PageHeader
                 eyebrow="Professor"
                 title="Cohort overview"
-                subtitle="A live read on assignments, groups, and confirmations."
+                subtitle="A live read on courses, assignments, groups, and confirmations."
                 action={
                     <Link to="/admin/assignments">
                         <Button variant="accent" size="sm">
@@ -119,8 +151,8 @@ const AdminDashboard = () => {
                 }
             />
 
-            {/* Row 1 — horizontal stat strip */}
             <div className="mb-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-line pb-5">
+                <InlineStat label="Courses" value={courses.length} />
                 <InlineStat label="Assignments" value={assignments.length} />
                 <InlineStat label="Groups" value={groups.length} />
                 <InlineStat label="Students" value={students.length} />
@@ -131,10 +163,131 @@ const AdminDashboard = () => {
                 />
             </div>
 
+            {/* ====== Courses taught ====== */}
+            <section className="mb-8">
+                <div className="mb-3 flex items-end justify-between">
+                    <div>
+                        <h2 className="font-display text-base font-bold tracking-tight text-ink">
+                            Courses you teach
+                        </h2>
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                            A live snapshot of enrollment and submission progress
+                        </p>
+                    </div>
+                </div>
+
+                {courses.length === 0 ? (
+                    <EmptyState
+                        title="No courses yet"
+                        description="Once you create a course, it will appear here with student and submission stats."
+                    />
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {coursesWithStats.map((course, i) => {
+                            const accent =
+                                COURSE_ACCENTS[i % COURSE_ACCENTS.length];
+
+                            return (
+                                <Link
+                                    key={course.id}
+                                    to={`/admin/assignments?course=${course.id}`}
+                                    className="group block"
+                                >
+                                    <Card
+                                        hover
+                                        className="relative flex h-full flex-col overflow-hidden px-5 py-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md"
+                                    >
+                                        <span
+                                            className={`absolute inset-x-0 top-0 h-1 ${accent}`}
+                                        />
+
+                                        <div className="flex items-start justify-between gap-3">
+                                            <Badge tone="accent">
+                                                {course.code}
+                                            </Badge>
+                                            <svg
+                                                className="h-4 w-4 text-ink-faint transition-transform duration-200 group-hover:translate-x-1 group-hover:text-ink"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2.5"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <line
+                                                    x1="5"
+                                                    y1="12"
+                                                    x2="19"
+                                                    y2="12"
+                                                />
+                                                <polyline points="12 5 19 12 12 19" />
+                                            </svg>
+                                        </div>
+
+                                        <h3 className="mt-3 font-display text-base font-bold leading-snug tracking-tight text-ink">
+                                            {course.name}
+                                        </h3>
+
+                                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-line-soft pt-3">
+                                            <div>
+                                                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                                                    Students
+                                                </p>
+                                                <p className="mt-0.5 font-sans text-lg font-semibold tabular-nums text-ink">
+                                                    {course.student_count}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                                                    Assignments
+                                                </p>
+                                                <p className="mt-0.5 font-sans text-lg font-semibold tabular-nums text-ink">
+                                                    {course.assignment_count}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-auto pt-4">
+                                            <div className="flex items-center justify-between text-[11px]">
+                                                <span className="font-medium text-ink-muted">
+                                                    {course.expected === 0
+                                                        ? "No submissions yet"
+                                                        : `${course.confirmed} / ${course.expected} confirmed`}
+                                                </span>
+                                                <span
+                                                    className={`font-semibold tabular-nums ${
+                                                        course.rate === 100
+                                                            ? "text-success"
+                                                            : "text-ink"
+                                                    }`}
+                                                >
+                                                    {course.rate}%
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-line-soft">
+                                                <div
+                                                    className={`h-full rounded-full ${
+                                                        course.rate === 100
+                                                            ? "bg-success"
+                                                            : "bg-ink"
+                                                    }`}
+                                                    style={{
+                                                        width: `${course.rate}%`
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
+
+            {/* ====== Rest of dashboard (unchanged layout) ====== */}
             <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-                {/* LEFT COLUMN */}
                 <div className="space-y-6">
-                    {/* Completion chart */}
                     <Card className="px-5 py-5">
                         <div className="mb-4 flex items-end justify-between">
                             <div>
@@ -188,7 +341,6 @@ const AdminDashboard = () => {
                         )}
                     </Card>
 
-                    {/* Assignments list */}
                     <div>
                         <div className="mb-3 flex items-end justify-between">
                             <h2 className="font-display text-base font-bold tracking-tight text-ink">
@@ -237,7 +389,6 @@ const AdminDashboard = () => {
                                                 </p>
                                             </div>
 
-                                            {/* Rate bar */}
                                             <div className="hidden w-32 shrink-0 items-center gap-2 sm:flex">
                                                 <div className="h-1 flex-1 overflow-hidden rounded-full bg-line-soft">
                                                     <div
@@ -261,9 +412,7 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN — sidebar info */}
                 <div className="space-y-4">
-                    {/* Due soon */}
                     <Card className="px-5 py-5">
                         <div className="mb-3 flex items-center justify-between">
                             <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">
@@ -305,7 +454,6 @@ const AdminDashboard = () => {
                         )}
                     </Card>
 
-                    {/* Snapshot numbers */}
                     <Card className="px-5 py-5">
                         <p className="mb-4 text-xs font-medium uppercase tracking-wider text-ink-muted">
                             Snapshot
@@ -334,20 +482,12 @@ const AdminDashboard = () => {
                                 )}
                             />
                             <SnapshotRow
-                                label="Confirmations today"
-                                value={
-                                    progress.reduce(
-                                        (s, p) => s + p.confirmed,
-                                        0
-                                    ) === 0
-                                        ? 0
-                                        : totalConfirmed
-                                }
+                                label="Total confirmations"
+                                value={totalConfirmed}
                             />
                         </dl>
                     </Card>
 
-                    {/* CTA */}
                     <Card className="border-ink bg-ink px-5 py-5">
                         <p className="font-display text-sm font-bold tracking-tight text-white">
                             Need to reach the whole cohort?
