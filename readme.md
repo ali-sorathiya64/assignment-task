@@ -970,7 +970,7 @@ https://github.com/ali-sorathiya64/assignment-task
 
 ### Demo Video
 
-https://youtu.be/hT2G4qUtALM
+https://www.youtube.com/watch?v=X98tal8mUCE
 
 ### Platform / Live Demo
 
