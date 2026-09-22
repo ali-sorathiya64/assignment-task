@@ -26,6 +26,8 @@ The application supports two roles:
     -   Confirm assignment submission through a two-step UI flow
     -   Track assignment/group progress
     -   Ask an AI assistant questions about a specific assignment
+    -   View enrolled courses and course assignments
+    -   Ask an AI assistant questions about a course
 -   **Admin / Professor**
     -   Log in with an admin account
     -   Create assignments
@@ -35,6 +37,42 @@ The application supports two roles:
     -   View students and groups
     -   Monitor student submission confirmations
     -   View assignment completion analytics
+
+------------------------------------------------------------------------
+
+## Round 2 Highlights
+
+Round 2 extends the original functional prototype with course management,
+improved UI/UX, individual and group submission workflows, professor/admin
+course views, submission filters, and course-aware AI assistance.
+
+### UI/UX
+- Improved login and registration validation
+- Loading, error, and disabled-submit feedback
+- Enrolled course cards and responsive course grid
+- Course detail page with assignment list
+- Individual vs Group assignment indicators
+- Group leader and non-leader submission states
+- Submission success animation with automatic modal close
+- Course and submission filters
+
+### Backend
+- Course creation and management
+- Course-to-student enrollment
+- Course-to-assignment relationships
+- Individual and group submission types
+- Explicit group leaders
+- Group leader-only acknowledgement
+- Group submission inheritance for all members
+- Course-aware assignment listing
+- Submission analytics and status filtering
+
+### AI / RAG
+- Separate Pinecone namespaces for assignments and courses
+- Assignment-focused AI retrieval
+- Course-focused AI retrieval
+- Course AI chat endpoint
+- Course indexing and reindexing utilities
 
 ------------------------------------------------------------------------
 
@@ -79,6 +117,24 @@ two-step confirmation interface:
 `Yes, I have submitted` → `Confirm`
 
 The backend stores the confirmation state and timestamp.
+
+### Course Management
+
+-   Create courses with a unique course code
+-   Enroll and remove students from courses
+-   View courses taught by the current admin/professor
+-   View courses enrolled by the current student
+-   Open course details and course assignments
+
+### Individual & Group Assignments
+
+Assignments support both `individual` and `group` submission types.
+
+For group assignments:
+-   Only the group leader can confirm the submission
+-   The confirmation is stored once for the group
+-   All group members inherit the submitted status
+-   Non-leaders cannot confirm the group assignment themselves
 
 ### Progress & Analytics
 
@@ -151,6 +207,8 @@ the database operation.
 -   Docker
 -   Docker Compose
 -   Neon PostgreSQL
+-   Vercel
+-   Render
 
 ------------------------------------------------------------------------
 
@@ -257,8 +315,10 @@ joineazy-task/
 │   │   ├── ai/
 │   │   │   ├── embeddings.js
 │   │   │   ├── indexAssignment.js
+│   │   │   ├── indexCourse.js
 │   │   │   ├── ingest.js
 │   │   │   ├── rag.js
+│   │   │   ├── reindex.js
 │   │   │   └── vectorStore.js
 │   │   │
 │   │   ├── config/
@@ -270,13 +330,15 @@ joineazy-task/
 │   │   │   ├── analytics.controller.js
 │   │   │   ├── assignment.controller.js
 │   │   │   ├── auth.controller.js
+│   │   │   ├── course.controller.js
 │   │   │   ├── group.controller.js
 │   │   │   ├── submission.controller.js
 │   │   │   └── user.controller.js
 │   │   │
 │   │   ├── db/
 │   │   │   ├── migrations/
-│   │   │   │   └── add-global-assignment.sql
+│   │   │   │   ├── add-global-assignment.sql
+│   │   │   │   └── round2-courses-groups.sql
 │   │   │   ├── connection.js
 │   │   │   └── schema.sql
 │   │   │
@@ -289,9 +351,10 @@ joineazy-task/
 │   │   │   ├── analytics.routes.js
 │   │   │   ├── assignment.routes.js
 │   │   │   ├── auth.routes.js
+│   │   │   ├── course.routes.js
 │   │   │   ├── group.routes.js
 │   │   │   ├── submission.routes.js
-│   │   │   └── user.route.js
+│   │   │   └── user.routes.js
 │   │   │
 │   │   ├── utils/
 │   │   │   └── jwt.js
@@ -324,7 +387,9 @@ joineazy-task/
 │   │   │   ├── admin/
 │   │   │   └── student/
 │   │   │       ├── AskAIModal.jsx
+│   │   │       ├── AskCourseAIModal.jsx
 │   │   │       ├── AssignmentCard.jsx
+│   │   │       ├── CourseDetail.jsx
 │   │   │       ├── ConfirmSubmissionModal.jsx
 │   │   │       ├── StudentAssignments.jsx
 │   │   │       ├── StudentDashboard.jsx
@@ -391,6 +456,22 @@ main relationship columns.
 
 ------------------------------------------------------------------------
 
+## Round 2 Database Changes
+
+The Round 2 migration adds the course and group-submission structure:
+
+- `courses` — course name, unique code, description, professor/admin
+- `course_students` — student enrollment with a unique course/student pair
+- `assignments.course_id` — optional course relationship
+- `assignments.submission_type` — `individual` or `group`
+- `groups.leader_id` — explicit group leader
+- `submissions.confirmed_by` — user who confirmed the submission
+
+For group assignments, the leader's confirmation is inherited by the other
+members instead of requiring a separate confirmation action for each member.
+
+------------------------------------------------------------------------
+
 ## API Documentation
 
 Swagger/OpenAPI documentation is available when the backend is running:
@@ -422,6 +503,18 @@ http://localhost:8000/api-docs
   GET      `/api/groups/all`                Admin
   POST     `/api/groups/:groupId/members`   Student
 
+### Courses
+
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/courses` | Admin |
+| GET | `/api/courses` | Admin |
+| GET | `/api/courses/my` | Student |
+| GET | `/api/courses/:courseId` | Authenticated |
+| PUT | `/api/courses/:courseId` | Admin |
+| POST | `/api/courses/:courseId/students` | Admin |
+| DELETE | `/api/courses/:courseId/students/:studentId` | Admin |
+
 ### Assignments
 
   Method   Endpoint                                    Access
@@ -447,9 +540,10 @@ http://localhost:8000/api-docs
 
 ### AI
 
-  Method   Endpoint                       Access
-  -------- ------------------------------ ---------
-  POST     `/api/ai/chat/:assignmentId`   Student
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/ai/chat/:assignmentId` | Student |
+| POST | `/api/ai/chat/course/:courseId` | Student |
 
 Example AI request:
 
@@ -721,45 +815,60 @@ environments.
 
 ## Screenshots
 
+> Screenshots will be added here before final submission.
+
 ### Login
 
-![Login](docs/screenshots/login.jpg)
+`![Login](docs/screenshots/login.png)`
 
 ### Student Dashboard
 
-![Student Dashboard](docs/screenshots/student-dashboard.jpg)
+`![Student Dashboard](docs/screenshots/student-dashboard.png)`
 
 ### Student Groups
 
-![Student Groups](docs/screenshots/group.jpg)
+`![Student Groups](docs/screenshots/student-groups.png)`
 
 ### Student Assignments
 
-![Student Assignments](docs/screenshots/assignments.jpg)
+`![Student Assignments](docs/screenshots/student-assignments.png)`
 
 ### Assignment Submission Confirmation
 
-![Submission Confirmation](docs/screenshots/submission-confirmation.jpg)
+`![Submission Confirmation](docs/screenshots/submission-confirmation.png)`
 
 ### Ask AI
 
-![Ask AI](docs/screenshots/ask-ai.jpg)
+`![Ask AI](docs/screenshots/ask-ai.png)`
 
 ### Admin Dashboard
 
-![Admin Dashboard](docs/screenshots/admin-dashboard.jpg)
+`![Admin Dashboard](docs/screenshots/admin-dashboard.png)`
 
 ### Assignment Management
 
-![Assignment Management](docs/screenshots/admin-assignments.jpg)
+`![Assignment Management](docs/screenshots/admin-assignments.png)`
 
 ### Analytics
 
-![Analytics](docs/screenshots/analytics.jpg)
+`![Analytics](docs/screenshots/analytics.png)`
 
 ### Swagger API Documentation
 
-![Swagger](docs/screenshots/swagger.jpg)
+`![Swagger](docs/screenshots/swagger.png)`
+
+------------------------------------------------------------------------
+
+## Round 2 Screenshots
+
+Add the following screenshots under `docs/screenshots/`:
+
+- `register.jpg`
+- `course-detail.jpg`
+- `group-leader.jpg`
+- `ask-ai-assignment.jpg`
+- `ask-ai-course.jpg`
+- `admin-submission-filter.jpg`
 
 ------------------------------------------------------------------------
 
@@ -798,6 +907,30 @@ environments.
 -   [x] AI/RAG endpoint
 -   [x] Automatic assignment indexing
 -   [x] Docker configuration
+
+------------------------------------------------------------------------
+
+## Round 2 Testing Checklist
+
+### Student
+-   [x] View enrolled courses
+-   [x] Open course detail
+-   [x] Ask AI about a course
+-   [x] Create/view group with explicit leader
+-   [x] Group leader can confirm group submission
+-   [x] Non-leader sees inherited submitted status
+-   [x] Non-leader cannot confirm group submission
+-   [x] Individual assignment flow remains unchanged
+
+### Admin / Professor
+-   [x] Create course
+-   [x] Enroll student
+-   [x] Create assignment with course
+-   [x] Select individual/group submission type
+-   [x] Assign assignment to a group
+-   [x] Filter assignments by course
+-   [x] Filter submissions by status
+-   [x] View course/student/assignment analytics
 
 ------------------------------------------------------------------------
 
@@ -844,14 +977,23 @@ https://github.com/ali-sorathiya64/assignment-task
 ### Demo Video
 
 https://youtu.be/hT2G4qUtALM
+
+### Platform / Live Demo
+
+Frontend: https://joineazy-assignment-system.vercel.app
+
+Backend: https://joineazy-backend-4ja5.onrender.com
+
+Swagger: https://joineazy-backend-4ja5.onrender.com/api-docs
+
 ------------------------------------------------------------------------
 
 ## Author
 
 **Ali Sorathiya**
 
--   GitHub: `https://github.com/ali-sorathiya64`
--   LinkedIn: `https://linkedin.com/in/ali-sorathiya`
+-   GitHub: https://github.com/ali-sorathiya64
+-   LinkedIn: https://linkedin.com/in/ali-sorathiya
 
 ------------------------------------------------------------------------
 

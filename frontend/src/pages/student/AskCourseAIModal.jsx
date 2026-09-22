@@ -157,7 +157,7 @@ const AskCourseAIModal = ({ course, onClose }) => {
                         variant="accent"
                         onClick={send}
                         disabled={!input.trim() || loading}
-                        className="h-[42px] shrink-0"
+                        className="h-10.5 shrink-0"
                     >
                         Send
                     </Button>

@@ -1,5 +1,5 @@
 .env
 .env.*
 !.env.example
-src-frontend.zip
+src.zip
 src-backend.zip
