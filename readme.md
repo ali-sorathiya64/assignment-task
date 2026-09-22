@@ -822,7 +822,7 @@ environments.
 ![Register](docs/screenshots/register.jpg)
 
 ### Student Dashboard
-![Student Dashboard](docs/screenshots/student-dashboard.jpg)
+![Student Dashboard](docs/screenshots/student_dashboard.jpg)
 
 ### Student Course
 ![Student Course](docs/screenshots/student-course-page.jpg)
@@ -843,7 +843,7 @@ environments.
 ![Ask AI - Course](docs/screenshots/ask-ai-course.jpg)
 
 ### Admin Dashboard
-![Admin Dashboard](docs/screenshots/admin-dashboard.jpg)
+![Admin Dashboard](docs/screenshots/admin_dashboard.jpg)
 
 ### Course Management
 ![Course Management](docs/screenshots/course-admin.jpg)
