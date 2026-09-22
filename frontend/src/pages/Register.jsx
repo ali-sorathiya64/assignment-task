@@ -97,7 +97,7 @@ const Register = () => {
                     id="name"
                     name="name"
                     label="Full name"
-                    placeholder="Why Sokai"
+                    placeholder="whySokai"
                     autoComplete="name"
                     value={form.name}
                     error={touched.name ? errors.name : ""}

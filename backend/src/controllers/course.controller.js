@@ -1,5 +1,5 @@
 import pool from "../db/connection.js";
-
+import { indexCourse } from "../ai/indexCourse.js";
 
 export const createCourse = async (req, res) => {
     try {
@@ -52,6 +52,12 @@ export const createCourse = async (req, res) => {
             ]
         );
 
+        try {
+            await indexCourse(result.rows[0].id);
+        } catch (aiError) {
+            console.error("Course AI indexing failed:", aiError.message);
+        }
+
         return res.status(201).json({
             success: true,
             message: "Course created successfully",
@@ -65,9 +71,6 @@ export const createCourse = async (req, res) => {
         });
     }
 };
-
-
-// GET /api/courses  (admin)
 
 export const getMyTaughtCourses = async (req, res) => {
     try {
@@ -103,7 +106,6 @@ export const getMyTaughtCourses = async (req, res) => {
         });
     }
 };
-
 
 export const getMyEnrolledCourses = async (req, res) => {
     try {
@@ -141,7 +143,6 @@ export const getMyEnrolledCourses = async (req, res) => {
     }
 };
 
-
 export const getCourseDetail = async (req, res) => {
     try {
         const { courseId } = req.params;
@@ -172,7 +173,6 @@ export const getCourseDetail = async (req, res) => {
 
         const course = courseResult.rows[0];
 
-        // Access control
         if (req.user.role === "admin") {
             if (course.professor_id !== req.user.id) {
                 return res.status(403).json({
@@ -241,7 +241,6 @@ export const getCourseDetail = async (req, res) => {
     }
 };
 
-
 export const updateCourse = async (req, res) => {
     try {
         const { courseId } = req.params;
@@ -290,6 +289,12 @@ export const updateCourse = async (req, res) => {
             [name.trim(), description?.trim() || null, courseId]
         );
 
+        try {
+            await indexCourse(result.rows[0].id);
+        } catch (aiError) {
+            console.error("Course AI indexing failed:", aiError.message);
+        }
+
         return res.status(200).json({
             success: true,
             message: "Course updated successfully",
@@ -303,7 +308,6 @@ export const updateCourse = async (req, res) => {
         });
     }
 };
-
 
 export const enrollStudent = async (req, res) => {
     try {
@@ -380,6 +384,12 @@ export const enrollStudent = async (req, res) => {
             [courseId, student.id]
         );
 
+        try {
+            await indexCourse(Number(courseId));
+        } catch (aiError) {
+            console.error("Course AI re-index failed:", aiError.message);
+        }
+
         return res.status(201).json({
             success: true,
             message: "Student enrolled successfully",
@@ -393,7 +403,6 @@ export const enrollStudent = async (req, res) => {
         });
     }
 };
-
 
 export const unenrollStudent = async (req, res) => {
     try {
@@ -430,6 +439,12 @@ export const unenrollStudent = async (req, res) => {
                 success: false,
                 message: "Student is not enrolled in this course"
             });
+        }
+
+        try {
+            await indexCourse(Number(courseId));
+        } catch (aiError) {
+            console.error("Course AI re-index failed:", aiError.message);
         }
 
         return res.status(200).json({

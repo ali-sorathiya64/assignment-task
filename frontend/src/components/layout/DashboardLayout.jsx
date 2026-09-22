@@ -13,6 +13,7 @@ const studentNav = [
 
 const adminNav = [
     { to: "/admin", label: "Overview", end: true },
+    { to: "/admin/courses", label: "Courses" },
     { to: "/admin/assignments", label: "Assignments" },
     { to: "/admin/groups", label: "Groups" },
     { to: "/admin/students", label: "Students" }

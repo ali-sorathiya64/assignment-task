@@ -8,18 +8,17 @@ const pool = new Pool({
     ssl: {
         rejectUnauthorized: false
     },
-    max: 20,
-    min: 2,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    max: 10,
+    min: 1,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 30000,
     keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
-    statement_timeout: 30000,
-    query_timeout: 30000
+    keepAliveInitialDelayMillis: 5000,
+    allowExitOnIdle: false
 });
 
 pool.on("error", (error) => {
-    console.error("Unexpected PostgreSQL error:", error);
+    console.error("Unexpected PostgreSQL pool error:", error.message);
 });
 
 export default pool;

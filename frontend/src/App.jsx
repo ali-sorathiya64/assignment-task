@@ -13,6 +13,8 @@ import AdminAssignments from "./pages/admin/AdminAssignments.jsx";
 import AdminAssignmentDetail from "./pages/admin/AdminAssignmentDetail.jsx";
 import AdminGroups from "./pages/admin/AdminGroups.jsx";
 import AdminStudents from "./pages/admin/AdminStudents.jsx";
+import AdminCourses from "./pages/admin/AdminCourses.jsx";
+import AdminCourseDetail from "./pages/admin/AdminCourseDetail.jsx";
 import { Spinner } from "./components/ui/States.jsx";
 
 const Landing = () => {
@@ -21,9 +23,7 @@ const Landing = () => {
     if (booting) return <Spinner label="Starting up" />;
     if (!user) return <Navigate to="/login" replace />;
 
-    return (
-        <Navigate to={user.role === "admin" ? "/admin" : "/student"} replace />
-    );
+    return <Navigate to={user.role === "admin" ? "/admin" : "/student"} replace />;
 };
 
 const App = () => (
@@ -55,6 +55,8 @@ const App = () => (
             }
         >
             <Route index element={<AdminDashboard />} />
+            <Route path="courses" element={<AdminCourses />} />
+            <Route path="courses/:courseId" element={<AdminCourseDetail />} />
             <Route path="assignments" element={<AdminAssignments />} />
             <Route
                 path="assignments/:assignmentId"

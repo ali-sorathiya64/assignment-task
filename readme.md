@@ -815,47 +815,41 @@ environments.
 
 ## Screenshots
 
-> Screenshots will be added here before final submission.
-
 ### Login
+![Login](docs/screenshots/login.jpg)
 
-`![Login](docs/screenshots/login.png)`
+### Register
+![Register](docs/screenshots/register.jpg)
 
 ### Student Dashboard
+![Student Dashboard](docs/screenshots/student-dashboard.jpg)
 
-`![Student Dashboard](docs/screenshots/student-dashboard.png)`
+### Student Course
+![Student Course](docs/screenshots/student-course-page.jpg)
 
-### Student Groups
+### My Group
+![My Group](docs/screenshots/my-group-owner.jpg)
 
-`![Student Groups](docs/screenshots/student-groups.png)`
+### Assignment Submission
+![Assignment Submission](docs/screenshots/confirm-submission.jpg)
 
-### Student Assignments
+### Pending Assignment
+![Pending Assignment](docs/screenshots/assignment-pending.jpg)
 
-`![Student Assignments](docs/screenshots/student-assignments.png)`
+### Ask AI - Assignment
+![Ask AI - Assignment](docs/screenshots/ask-ai-assignment.jpg)
 
-### Assignment Submission Confirmation
-
-`![Submission Confirmation](docs/screenshots/submission-confirmation.png)`
-
-### Ask AI
-
-`![Ask AI](docs/screenshots/ask-ai.png)`
+### Ask AI - Course
+![Ask AI - Course](docs/screenshots/ask-ai-course.jpg)
 
 ### Admin Dashboard
+![Admin Dashboard](docs/screenshots/admin-dashboard.jpg)
 
-`![Admin Dashboard](docs/screenshots/admin-dashboard.png)`
-
-### Assignment Management
-
-`![Assignment Management](docs/screenshots/admin-assignments.png)`
-
-### Analytics
-
-`![Analytics](docs/screenshots/analytics.png)`
+### Course Management
+![Course Management](docs/screenshots/course-admin.jpg)
 
 ### Swagger API Documentation
-
-`![Swagger](docs/screenshots/swagger.png)`
+![Swagger](docs/screenshots/swagger.jpg)
 
 ------------------------------------------------------------------------
 

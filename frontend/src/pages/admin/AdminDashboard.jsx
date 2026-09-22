@@ -424,7 +424,7 @@ const AdminDashboard = () => {
                                             />
                                             <Bar
                                                 dataKey="value"
-                                                fill="#6d28d9"
+                                                fill="#18181b"
                                                 radius={[4, 4, 0, 0]}
                                             />
                                         </BarChart>
