@@ -24,7 +24,7 @@ The application supports two roles:
     -   View assigned and global assignments
     -   Open OneDrive submission links
     -   Confirm assignment submission through a two-step UI flow
-    -   Track assignment/group progress
+    -   Track assignment and group progress
     -   Ask an AI assistant questions about a specific assignment
     -   View enrolled courses and course assignments
     -   Ask an AI assistant questions about a course
