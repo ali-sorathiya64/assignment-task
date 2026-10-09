@@ -5,7 +5,7 @@ import pg from 'pg';
 
 const { Client } = pg;
 
-const sqlPath = path.join(process.cwd(), 'src', 'db', '''round2.sql');
+const sqlPath = path.join(process.cwd(), 'src', 'db', 'round2.sql');
 
 const sql = fs.readFileSync(sqlPath, 'utf8');
 
