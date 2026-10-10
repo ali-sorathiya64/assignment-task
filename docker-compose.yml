@@ -1,16 +1,17 @@
 services:
    backend:
     build: ./backend
-    container_name: task-backend
+    container_name: task_backend
     restart: always
     env_file:
       - ./backend/.env
     ports:
       - "8000:8000"
 
+
    client:
     build: ./frontend
-    container_name: task-client
+    container_name: taskclient
     restart: always
     env_file:
       - ./frontend/.env
