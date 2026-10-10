@@ -116,7 +116,7 @@ two-step confirmation interface:
 
 `Yes, I have submitted` → `Confirm`
 
-The backend stores the confirmation state and timestamp.
+The backend stores the confirmation state and timestamp also.
 
 ### Course Management
 
