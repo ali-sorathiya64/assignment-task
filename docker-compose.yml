@@ -11,7 +11,7 @@ services:
 
    client:
     build: ./frontend
-    container_name: taskclient
+    container_name: task_client
     restart: always
     env_file:
       - ./frontend/.env
