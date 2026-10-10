@@ -8,7 +8,7 @@ try{
         if (!authHeader){
         return res.status(401).json({
             success:false,
-            message:"Authorization header is missing"
+            message:"Authorization header missing"
         })
     }
 
