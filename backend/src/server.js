@@ -34,6 +34,7 @@ app.get("/api/health", async (req, res) => {
         res.json({
             success: true,
             message: "Database connected",
+
             time: result.rows[0].now
         });
     } catch (error) {
