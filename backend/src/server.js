@@ -27,7 +27,7 @@ app.get("/", (req, res) => {
     });
 });
 
-app.get("/api/health", async (req, res) => {
+app.get("/health", async (req, res) => {
     try {
         const result = await pool.query("SELECT NOW()");
 
