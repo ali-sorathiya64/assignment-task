@@ -23,7 +23,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "Joineazy Backend API is running"
+        message: "Backend API is running"
     });
 });
 
@@ -37,7 +37,8 @@ app.get("/health", async (req, res) => {
 
             time: result.rows[0].now
         });
-    } catch (error) {
+    } catch (error)
+ {
         console.error("Database error:", error);
 
         res.status(500).json({
