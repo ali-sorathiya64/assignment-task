@@ -12,6 +12,7 @@ import aiRoutes from "./routes/ai.routes.js";
 import courseRoutes from "./routes/course.routes.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
+import gradingRoutes from "./routes/grading.routes.js";
 
 const app = express();
 
@@ -27,7 +28,7 @@ app.get("/", (req, res) => {
     });
 });
 
-app.get("/health", async (req, res) => {
+app.get("/health", async (_req, res) => {
     try {
         const result = await pool.query("SELECT NOW()");
 
@@ -37,8 +38,7 @@ app.get("/health", async (req, res) => {
 
             time: result.rows[0].now
         });
-    } catch (error)
- {
+    } catch (error) {
         console.error("Database error:", error);
 
         res.status(500).json({
@@ -56,6 +56,9 @@ app.use("/api/submissions", submissionRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/grading", gradingRoutes);
+
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

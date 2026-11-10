@@ -1,32 +1,16 @@
-import 'dotenv/config';
-import fs from 'fs';
-import path from 'path';
-import pg from 'pg';
+import { Pool } from 'pg';
+import dotenv from "dotenv"
+import fs from "fs"
+dotenv.config();
 
-const { Client } = pg;
-
-const sqlPath = path.join(process.cwd(), 'src', 'db', ''round2.sql');
-
-const sql = fs.readFileSync(sqlPath, 'utf8');
-
-const client = new Client({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false },
 });
 
-try {
-  await client.connect();
+const sql = fs.readFileSync('./src/db/migrations/round3-grading.sql', 'utf8');
 
-  console.log('Connected to database');
-
-  await client.query(sql);
-
-  console.log('Round 2 migration completed successfully');
-} catch (error) {
-  console.error('Migration failed:', error.message);
-  process.exitCode = 1;
-} finally {
-  await client.end();
-}
+pool.query(sql)
+  .then(() => console.log(" Round 3 migration applied"))
+  .catch(console.error)
+  .finally(() => pool.end());
