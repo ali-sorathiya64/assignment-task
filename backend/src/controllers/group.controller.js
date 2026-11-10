@@ -48,7 +48,6 @@ export const createGroup = async (req, res) => {
         });
     } catch (error) {
         console.error("Create group error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -69,9 +68,7 @@ export const addMember = async (req, res) => {
         }
 
         const groupResult = await pool.query(
-            `SELECT id, name
-             FROM groups
-             WHERE id = $1`,
+            `SELECT id, name FROM groups WHERE id = $1`,
             [groupId]
         );
 
@@ -83,8 +80,7 @@ export const addMember = async (req, res) => {
         }
 
         const memberResult = await pool.query(
-            `SELECT id
-             FROM group_members
+            `SELECT id FROM group_members
              WHERE group_id = $1 AND user_id = $2`,
             [groupId, req.user.id]
         );
@@ -100,15 +96,13 @@ export const addMember = async (req, res) => {
 
         if (studentId) {
             studentResult = await pool.query(
-                `SELECT id, name, email, role
-                 FROM users
+                `SELECT id, name, email, role FROM users
                  WHERE id = $1 AND role = 'student'`,
                 [studentId]
             );
         } else {
             studentResult = await pool.query(
-                `SELECT id, name, email, role
-                 FROM users
+                `SELECT id, name, email, role FROM users
                  WHERE email = $1 AND role = 'student'`,
                 [email.trim().toLowerCase()]
             );
@@ -124,8 +118,7 @@ export const addMember = async (req, res) => {
         const student = studentResult.rows[0];
 
         const existingMember = await pool.query(
-            `SELECT id
-             FROM group_members
+            `SELECT id FROM group_members
              WHERE group_id = $1 AND user_id = $2`,
             [groupId, student.id]
         );
@@ -150,7 +143,6 @@ export const addMember = async (req, res) => {
         });
     } catch (error) {
         console.error("Add member error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -199,7 +191,6 @@ export const getMyGroups = async (req, res) => {
         });
     } catch (error) {
         console.error("Get groups error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -231,10 +222,8 @@ export const getAllGroups = async (req, res) => {
                     '[]'
                 ) AS members
              FROM groups g
-             LEFT JOIN group_members gm
-                ON gm.group_id = g.id
-             LEFT JOIN users u
-                ON u.id = gm.user_id
+             LEFT JOIN group_members gm ON gm.group_id = g.id
+             LEFT JOIN users u ON u.id = gm.user_id
              LEFT JOIN users leader ON leader.id = g.leader_id
              GROUP BY g.id, leader.name, leader.email
              ORDER BY g.created_at DESC`
@@ -246,7 +235,170 @@ export const getAllGroups = async (req, res) => {
         });
     } catch (error) {
         console.error("Get all groups error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
 
+export const updateGroup = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const { name } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Group name is required"
+            });
+        }
+
+        const groupCheck = await pool.query(
+            `SELECT id, leader_id, created_by FROM groups WHERE id = $1`,
+            [groupId]
+        );
+
+        if (groupCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Group not found"
+            });
+        }
+
+        const group = groupCheck.rows[0];
+
+        if (group.leader_id !== req.user.id && group.created_by !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the group leader can edit this group"
+            });
+        }
+
+        const result = await pool.query(
+            `UPDATE groups SET name = $1 WHERE id = $2
+             RETURNING id, name, created_by, leader_id, created_at`,
+            [name.trim(), groupId]
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Group updated",
+            group: result.rows[0]
+        });
+    } catch (error) {
+        console.error("Update group error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+export const removeMember = async (req, res) => {
+    try {
+        const { groupId, userId } = req.params;
+
+        const groupCheck = await pool.query(
+            `SELECT id, leader_id FROM groups WHERE id = $1`,
+            [groupId]
+        );
+
+        if (groupCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Group not found"
+            });
+        }
+
+        const group = groupCheck.rows[0];
+
+        if (group.leader_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the group leader can remove members"
+            });
+        }
+
+        if (Number(userId) === group.leader_id) {
+            return res.status(400).json({
+                success: false,
+                message: "The group leader cannot remove themselves"
+            });
+        }
+
+        const result = await pool.query(
+            `DELETE FROM group_members
+             WHERE group_id = $1 AND user_id = $2
+             RETURNING id`,
+            [groupId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Member not found in this group"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Member removed from group"
+        });
+    } catch (error) {
+        console.error("Remove member error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+export const deleteGroup = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+
+        const groupCheck = await pool.query(
+            `SELECT id, leader_id FROM groups WHERE id = $1`,
+            [groupId]
+        );
+
+        if (groupCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Group not found"
+            });
+        }
+
+        const group = groupCheck.rows[0];
+
+        if (group.leader_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the group leader can delete this group"
+            });
+        }
+
+        const assigned = await pool.query(
+            `SELECT 1 FROM assignment_groups WHERE group_id = $1 LIMIT 1`,
+            [groupId]
+        );
+
+        if (assigned.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "Cannot delete a group that has received assignments"
+            });
+        }
+
+        await pool.query(`DELETE FROM groups WHERE id = $1`, [groupId]);
+
+        return res.status(200).json({
+            success: true,
+            message: "Group deleted"
+        });
+    } catch (error) {
+        console.error("Delete group error:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error"

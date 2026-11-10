@@ -8,7 +8,8 @@ import Button from "../ui/Button.jsx";
 const studentNav = [
     { to: "/student", label: "Overview", end: true },
     { to: "/student/assignments", label: "Assignments" },
-    { to: "/student/groups", label: "My groups" }
+    { to: "/student/groups", label: "My groups" },
+    { to: "/student/grades", label: "My grades" }
 ];
 
 const adminNav = [
@@ -16,7 +17,8 @@ const adminNav = [
     { to: "/admin/courses", label: "Courses" },
     { to: "/admin/assignments", label: "Assignments" },
     { to: "/admin/groups", label: "Groups" },
-    { to: "/admin/students", label: "Students" }
+    { to: "/admin/students", label: "Students" },
+    { to: "/admin/grading", label: "Grading" }
 ];
 
 const DashboardLayout = () => {

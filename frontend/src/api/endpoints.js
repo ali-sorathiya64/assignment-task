@@ -59,3 +59,18 @@ export const aiApi = {
     chatCourse: (courseId, question) =>
         api.post(`/api/ai/chat/course/${courseId}`, { question })
 };
+
+export const gradingApi = {
+    dashboard: () => api.get("/api/grading/dashboard"),
+    assignmentSubmissions: (assignmentId) =>
+        api.get(`/api/grading/assignments/${assignmentId}/submissions`),
+    saveIndividual: (payload) =>
+        api.post("/api/grading/individual", payload),
+    saveGroupCommon: (payload) =>
+        api.post("/api/grading/group/common", payload),
+    saveGroupOverride: (payload) =>
+        api.post("/api/grading/group/override", payload),
+    removeGroupOverride: (submissionId, studentId) =>
+    api.delete(`/api/grading/group/override/${submissionId}/${studentId}`),
+    myGrades: () => api.get("/api/grading/my-grades")
+};

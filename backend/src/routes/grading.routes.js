@@ -61,7 +61,7 @@ router.get(
  *       200:
  *         description: Assignment with list of gradeable targets
  *       403:
- *         description: Professor does not own this assignment's course
+ *         description: Professor does not own this assignment
  *       404:
  *         description: Assignment not found
  */
@@ -103,6 +103,8 @@ router.get(
  *         description: Not authorized
  *       404:
  *         description: Submission not found
+ *       409:
+ *         description: Submission is not confirmed
  */
 router.post(
     "/individual",
@@ -144,6 +146,8 @@ router.post(
  *         description: Not authorized
  *       404:
  *         description: Submission not found
+ *       409:
+ *         description: Submission is not confirmed
  */
 router.post(
     "/group/common",
@@ -187,6 +191,8 @@ router.post(
  *         description: Not authorized
  *       404:
  *         description: Submission not found
+ *       409:
+ *         description: Submission is not confirmed
  */
 router.post(
     "/group/override",
@@ -197,7 +203,7 @@ router.post(
 
 /**
  * @swagger
- * /api/grading/group/override/{groupId}/{studentId}:
+ * /api/grading/group/override/{submissionId}/{studentId}:
  *   delete:
  *     summary: Remove an individual override (member falls back to common grade)
  *     tags: [Grading]
@@ -205,7 +211,7 @@ router.post(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: groupId
+ *         name: submissionId
  *         required: true
  *         schema:
  *           type: integer
@@ -221,7 +227,7 @@ router.post(
  *         description: Override not found
  */
 router.delete(
-    "/group/override/:groupId/:studentId",
+    "/group/override/:submissionId/:studentId",
     AuthMiddleware,
     RoleMiddleware("admin"),
     removeGroupOverride

@@ -16,6 +16,9 @@ import AdminStudents from "./pages/admin/AdminStudents.jsx";
 import AdminCourses from "./pages/admin/AdminCourses.jsx";
 import AdminCourseDetail from "./pages/admin/AdminCourseDetail.jsx";
 import { Spinner } from "./components/ui/States.jsx";
+import AdminGrading from "./pages/admin/AdminGrading.jsx";
+import GradeAssignment from "./pages/admin/GradeAssignment.jsx";
+import StudentGrades from "./pages/student/StudentGrades.jsx";
 
 const Landing = () => {
     const { user, booting } = useAuth();
@@ -44,6 +47,7 @@ const App = () => (
             <Route path="assignments" element={<StudentAssignments />} />
             <Route path="groups" element={<StudentGroups />} />
             <Route path="courses/:courseId" element={<CourseDetail />} />
+            <Route path="grades" element={<StudentGrades />} />
         </Route>
 
         <Route
@@ -58,6 +62,8 @@ const App = () => (
             <Route path="courses" element={<AdminCourses />} />
             <Route path="courses/:courseId" element={<AdminCourseDetail />} />
             <Route path="assignments" element={<AdminAssignments />} />
+            <Route path="grading" element={<AdminGrading />} />
+            <Route path="grading/:assignmentId" element={<GradeAssignment />} />
             <Route
                 path="assignments/:assignmentId"
                 element={<AdminAssignmentDetail />}

@@ -1,25 +1,31 @@
 import pool from "../db/connection.js";
 
+const toId = (value) => {
+    const number = Number(value);
+    if (!Number.isInteger(number) || number <= 0) {
+        throw { status: 400, message: "Invalid ID" };
+    }
+    return number;
+};
+
 const loadOwnedAssignment = async (assignmentId, professorId) => {
     const result = await pool.query(
-        `SELECT a.id, a.title, a.submission_type, a.course_id,
-                a.max_score, a.created_by, c.professor_id
+        `SELECT a.id, a.title, a.submission_type, a.course_id, a.max_score,
+                a.onedrive_link, a.due_date,
+                COALESCE(c.professor_id, a.created_by) AS owner_id
          FROM assignments a
          LEFT JOIN courses c ON c.id = a.course_id
          WHERE a.id = $1`,
-        [assignmentId]
+        [toId(assignmentId)]
     );
     if (result.rows.length === 0) throw { status: 404, message: "Assignment not found" };
     const assignment = result.rows[0];
-
-    const ownsCourse = assignment.professor_id === professorId;
-    const ownsAssignment = assignment.created_by === professorId;
-
-    if (!ownsCourse && !ownsAssignment) {
+    if (assignment.owner_id !== professorId) {
         throw { status: 403, message: "You do not own this assignment" };
     }
-    if (!assignment.max_score)
+    if (!assignment.max_score) {
         throw { status: 400, message: "Assignment has no max_score configured" };
+    }
     return assignment;
 };
 
@@ -27,17 +33,28 @@ const loadSubmission = async (submissionId, client = pool) => {
     const result = await client.query(
         `SELECT id, assignment_id, group_id, student_id, confirmed
          FROM submissions WHERE id = $1`,
-        [submissionId]
+        [toId(submissionId)]
     );
     if (result.rows.length === 0) throw { status: 404, message: "Submission not found" };
     return result.rows[0];
 };
 
 const validateScore = (raw, max) => {
+    if (
+        raw === null ||
+        raw === undefined ||
+        typeof raw === "boolean" ||
+        (typeof raw === "string" && raw.trim() === "")
+    ) {
+        throw { status: 400, message: "Score is required" };
+    }
     const score = Number(raw);
     if (!Number.isFinite(score)) throw { status: 400, message: "Score must be a number" };
     if (score < 0) throw { status: 400, message: "Score cannot be negative" };
     if (score > max) throw { status: 400, message: `Score cannot exceed max_score (${max})` };
+    if (Math.round(score * 100) / 100 !== score) {
+        throw { status: 400, message: "Score can have at most 2 decimal places" };
+    }
     return score;
 };
 
@@ -106,14 +123,19 @@ export const getAssignmentSubmissions = async (req, res) => {
             `SELECT u.id AS student_id, u.name AS student_name, u.email AS student_email,
                     s.id AS submission_id, s.confirmed, s.confirmed_at,
                     gr.score, gr.feedback, gr.graded_at
-             FROM assignment_students ast
-             JOIN users u ON u.id = ast.student_id
+             FROM users u
              LEFT JOIN submissions s ON s.assignment_id = $1 AND s.student_id = u.id
              LEFT JOIN grades gr ON gr.assignment_id = $1 AND gr.student_id = u.id
                                   AND gr.group_id IS NULL
-             WHERE ast.assignment_id = $1
+             WHERE u.role = 'student'
+               AND (
+                   u.id IN (SELECT student_id FROM assignment_students WHERE assignment_id = $1)
+                   OR (COALESCE($2, 0) > 0 AND u.id IN (
+                       SELECT student_id FROM course_students WHERE course_id = $2
+                   ))
+               )
              ORDER BY u.name`,
-            [assignmentId]
+            [assignmentId, assignment.course_id]
         );
         return res.status(200).json({ success: true, assignment, students: result.rows });
     } catch (error) {
@@ -128,11 +150,16 @@ export const saveIndividualGrade = async (req, res) => {
     try {
         const { submissionId, score, feedback } = req.body;
         if (!submissionId) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ success: false, message: "submissionId is required" });
         }
 
         await client.query("BEGIN");
         const submission = await loadSubmission(submissionId, client);
+        if (!submission.confirmed) {
+            await client.query("ROLLBACK");
+            return res.status(409).json({ success: false, message: "Submission is not confirmed yet" });
+        }
         const assignment = await loadOwnedAssignment(submission.assignment_id, req.user.id);
 
         if (assignment.submission_type !== "individual") {
@@ -164,7 +191,7 @@ export const saveIndividualGrade = async (req, res) => {
         await client.query("COMMIT");
         return res.status(200).json({ success: true, message: "Grade saved", grade: saved.rows[0] });
     } catch (error) {
-        await client.query("ROLLBACK");
+        try { await client.query("ROLLBACK"); } catch (_) {}
         if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         console.error("Save individual grade error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });
@@ -178,11 +205,16 @@ export const saveGroupCommonGrade = async (req, res) => {
     try {
         const { groupId, submissionId, score, feedback } = req.body;
         if (!groupId || !submissionId) {
+            await client.query("ROLLBACK");
             return res.status(400).json({ success: false, message: "groupId and submissionId are required" });
         }
 
         await client.query("BEGIN");
         const submission = await loadSubmission(submissionId, client);
+        if (!submission.confirmed) {
+            await client.query("ROLLBACK");
+            return res.status(409).json({ success: false, message: "Submission is not confirmed yet" });
+        }
         if (submission.group_id !== Number(groupId)) {
             await client.query("ROLLBACK");
             return res.status(400).json({ success: false, message: "Submission does not belong to this group" });
@@ -214,7 +246,7 @@ export const saveGroupCommonGrade = async (req, res) => {
         await client.query("COMMIT");
         return res.status(200).json({ success: true, message: "Group grade saved", grade: saved.rows[0] });
     } catch (error) {
-        await client.query("ROLLBACK");
+        try { await client.query("ROLLBACK"); } catch (_) {}
         if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         console.error("Save group common grade error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });
@@ -228,6 +260,7 @@ export const saveGroupOverride = async (req, res) => {
     try {
         const { groupId, studentId, submissionId, score, feedback } = req.body;
         if (!groupId || !studentId || !submissionId) {
+            await client.query("ROLLBACK");
             return res.status(400).json({
                 success: false,
                 message: "groupId, studentId and submissionId are required"
@@ -236,6 +269,10 @@ export const saveGroupOverride = async (req, res) => {
 
         await client.query("BEGIN");
         const submission = await loadSubmission(submissionId, client);
+        if (!submission.confirmed) {
+            await client.query("ROLLBACK");
+            return res.status(409).json({ success: false, message: "Submission is not confirmed yet" });
+        }
         if (submission.group_id !== Number(groupId)) {
             await client.query("ROLLBACK");
             return res.status(400).json({ success: false, message: "Submission does not belong to this group" });
@@ -276,7 +313,7 @@ export const saveGroupOverride = async (req, res) => {
         await client.query("COMMIT");
         return res.status(200).json({ success: true, message: "Override saved", grade: saved.rows[0] });
     } catch (error) {
-        await client.query("ROLLBACK");
+        try { await client.query("ROLLBACK"); } catch (_) {}
         if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         console.error("Save group override error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });
@@ -287,24 +324,20 @@ export const saveGroupOverride = async (req, res) => {
 
 export const removeGroupOverride = async (req, res) => {
     try {
-        const { groupId, studentId } = req.params;
+        const submission = await loadSubmission(req.params.submissionId);
+        await loadOwnedAssignment(submission.assignment_id, req.user.id);
         const result = await pool.query(
             `DELETE FROM grades
-             WHERE assignment_id IN (
-                 SELECT a.id FROM assignments a
-                 JOIN courses c ON c.id = a.course_id
-                 WHERE c.professor_id = $1
-             )
-               AND group_id = $2
-               AND student_id = $3
+             WHERE submission_id = $1 AND student_id = $2 AND group_id IS NOT NULL
              RETURNING id`,
-            [req.user.id, Number(groupId), Number(studentId)]
+            [submission.id, toId(req.params.studentId)]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, message: "Override not found" });
         }
         return res.status(200).json({ success: true, message: "Override removed" });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         console.error("Remove override error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
@@ -335,7 +368,6 @@ export const getMyGrades = async (req, res) => {
                  a.course_id,
                  c.code AS course_code,
                  c.name AS course_name,
-                 -- effective score
                  CASE
                      WHEN a.submission_type = 'individual' THEN (
                          SELECT gr.score FROM grades gr
