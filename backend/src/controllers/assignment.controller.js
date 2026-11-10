@@ -1,9 +1,6 @@
 import pool from "../db/connection.js";
 import { indexAssignment } from "../ai/indexAssignment.js";
 
-// ------------------------------------------------------------
-// POST /api/assignments  (admin)
-// ------------------------------------------------------------
 export const createAssignment = async (req, res) => {
     try {
         const {
@@ -13,7 +10,8 @@ export const createAssignment = async (req, res) => {
             onedrive_link,
             is_global,
             submission_type,
-            course_id
+            course_id,
+            max_score
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -30,6 +28,13 @@ export const createAssignment = async (req, res) => {
             });
         }
 
+        if (new Date(due_date).getTime() <= Date.now()) {
+            return res.status(400).json({
+                success: false,
+                message: "Due date cannot be in the past"
+            });
+        }
+
         if (!onedrive_link || !onedrive_link.trim()) {
             return res.status(400).json({
                 success: false,
@@ -39,7 +44,10 @@ export const createAssignment = async (req, res) => {
 
         const type = submission_type === "group" ? "group" : "individual";
 
-        // If course_id provided, verify the professor owns it
+        const parsedMax = Number(max_score);
+        const finalMax =
+            Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 100;
+
         if (course_id) {
             const courseCheck = await pool.query(
                 `SELECT id FROM courses
@@ -58,8 +66,8 @@ export const createAssignment = async (req, res) => {
         const result = await pool.query(
             `INSERT INTO assignments
                 (title, description, due_date, onedrive_link,
-                 created_by, is_global, submission_type, course_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 created_by, is_global, submission_type, course_id, max_score)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING
                 id,
                 title,
@@ -70,6 +78,7 @@ export const createAssignment = async (req, res) => {
                 is_global,
                 submission_type,
                 course_id,
+                max_score,
                 created_at,
                 updated_at`,
             [
@@ -80,7 +89,8 @@ export const createAssignment = async (req, res) => {
                 req.user.id,
                 is_global === true,
                 type,
-                course_id || null
+                course_id || null,
+                finalMax
             ]
         );
 
@@ -104,10 +114,6 @@ export const createAssignment = async (req, res) => {
     }
 };
 
-// ------------------------------------------------------------
-// GET /api/assignments
-// Admin sees all. Student sees: global OR targeted OR course-enrolled
-// ------------------------------------------------------------
 export const getAssignments = async (req, res) => {
     try {
         let result;
@@ -124,6 +130,7 @@ export const getAssignments = async (req, res) => {
                     a.is_global,
                     a.submission_type,
                     a.course_id,
+                    a.max_score,
                     a.created_at,
                     a.updated_at
                  FROM assignments a
@@ -141,6 +148,7 @@ export const getAssignments = async (req, res) => {
                     a.is_global,
                     a.submission_type,
                     a.course_id,
+                    a.max_score,
                     a.created_at,
                     a.updated_at
                  FROM assignments a
@@ -182,9 +190,6 @@ export const getAssignments = async (req, res) => {
     }
 };
 
-// ------------------------------------------------------------
-// POST /api/assignments/:assignmentId/groups
-// ------------------------------------------------------------
 export const assignToGroup = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -198,7 +203,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         const assignmentResult = await pool.query(
-            `SELECT id, title FROM assignments WHERE id = $1`,
+            `SELECT id, title, course_id FROM assignments WHERE id = $1`,
             [assignmentId]
         );
 
@@ -208,6 +213,8 @@ export const assignToGroup = async (req, res) => {
                 message: "Assignment not found"
             });
         }
+
+        const assignment = assignmentResult.rows[0];
 
         const groupResult = await pool.query(
             `SELECT id, name FROM groups WHERE id = $1`,
@@ -219,6 +226,27 @@ export const assignToGroup = async (req, res) => {
                 success: false,
                 message: "Group not found"
             });
+        }
+
+        if (assignment.course_id) {
+            const invalidMembers = await pool.query(
+                `SELECT gm.user_id
+                 FROM group_members gm
+                 WHERE gm.group_id = $1
+                   AND NOT EXISTS (
+                       SELECT 1 FROM course_students cs
+                       WHERE cs.course_id = $2 AND cs.student_id = gm.user_id
+                   )`,
+                [groupId, assignment.course_id]
+            );
+
+            if (invalidMembers.rows.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "All group members must be enrolled in the assignment's course"
+                });
+            }
         }
 
         const existingAssignment = await pool.query(
@@ -255,9 +283,6 @@ export const assignToGroup = async (req, res) => {
     }
 };
 
-// ------------------------------------------------------------
-// POST /api/assignments/:assignmentId/students
-// ------------------------------------------------------------
 export const assignToStudent = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -329,9 +354,6 @@ export const assignToStudent = async (req, res) => {
     }
 };
 
-// ------------------------------------------------------------
-// PUT /api/assignments/:assignmentId
-// ------------------------------------------------------------
 export const updateAssignment = async (req, res) => {
     try {
         const { assignmentId } = req.params;
@@ -342,7 +364,8 @@ export const updateAssignment = async (req, res) => {
             onedrive_link,
             is_global,
             submission_type,
-            course_id
+            course_id,
+            max_score
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -356,6 +379,13 @@ export const updateAssignment = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Due date is required"
+            });
+        }
+
+        if (new Date(due_date).getTime() <= Date.now()) {
+            return res.status(400).json({
+                success: false,
+                message: "Due date cannot be in the past"
             });
         }
 
@@ -379,6 +409,10 @@ export const updateAssignment = async (req, res) => {
         }
 
         const type = submission_type === "group" ? "group" : "individual";
+
+        const parsedMax = Number(max_score);
+        const finalMax =
+            Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 100;
 
         if (course_id) {
             const courseCheck = await pool.query(
@@ -405,8 +439,9 @@ export const updateAssignment = async (req, res) => {
                 is_global = $5,
                 submission_type = $6,
                 course_id = $7,
+                max_score = $8,
                 updated_at = NOW()
-             WHERE id = $8
+             WHERE id = $9
              RETURNING
                 id,
                 title,
@@ -417,6 +452,7 @@ export const updateAssignment = async (req, res) => {
                 is_global,
                 submission_type,
                 course_id,
+                max_score,
                 created_at,
                 updated_at`,
             [
@@ -427,6 +463,7 @@ export const updateAssignment = async (req, res) => {
                 is_global === true,
                 type,
                 course_id || null,
+                finalMax,
                 assignmentId
             ]
         );

@@ -13,7 +13,8 @@ const emptyForm = {
     onedrive_link: "",
     is_global: true,
     submission_type: "individual",
-    course_id: ""
+    course_id: "",
+    max_score: 100
 };
 
 const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
@@ -43,7 +44,8 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                               : "individual",
                       course_id: assignment.course_id
                           ? String(assignment.course_id)
-                          : ""
+                          : "",
+                      max_score: assignment.max_score || 100
                   }
                 : emptyForm
         );
@@ -67,6 +69,11 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
             return;
         }
 
+        if (form.max_score === "" || Number(form.max_score) <= 0) {
+            setError("Max score must be a positive number.");
+            return;
+        }
+
         setSaving(true);
 
         const payload = {
@@ -76,7 +83,8 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
             onedrive_link: form.onedrive_link.trim(),
             is_global: form.is_global,
             submission_type: form.submission_type,
-            course_id: form.course_id ? Number(form.course_id) : null
+            course_id: form.course_id ? Number(form.course_id) : null,
+            max_score: Number(form.max_score)
         };
 
         try {
@@ -141,7 +149,7 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                     />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                     <div>
                         <label className="label" htmlFor="due_date">
                             Due date
@@ -151,7 +159,24 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                             name="due_date"
                             type="datetime-local"
                             className="field"
+                            min={toLocalInput(new Date().toISOString())}
                             value={form.due_date}
+                            onChange={change}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="label" htmlFor="max_score">
+                            Max score
+                        </label>
+                        <input
+                            id="max_score"
+                            name="max_score"
+                            type="number"
+                            min="1"
+                            step="1"
+                            className="field"
+                            value={form.max_score}
                             onChange={change}
                         />
                     </div>
