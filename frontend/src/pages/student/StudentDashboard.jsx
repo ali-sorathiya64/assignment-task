@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useStudentAssignments } from "../../hooks/useStudentAssignments.js";
 import { courseApi, groupApi } from "../../api/endpoints.js";
 import { dueLabel, formatDate, initials } from "../../api/format.js";
-import PageHeader from "../../components/layout/PageHeader.jsx";
 import Badge from "../../components/ui/Badge.jsx";
 import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
@@ -65,258 +64,189 @@ const StudentDashboard = () => {
 
     return (
         <>
-            <PageHeader
-                eyebrow={today}
-                title={`Hey, ${firstName}`}
-                subtitle="Here's your semester at a glance."
-                action={
-                    <Link to="/student/assignments">
-                        <Button variant="accent" size="sm">
-                            All assignments
-                        </Button>
-                    </Link>
-                }
-            />
-
             {loading && <Spinner label="Loading" />}
             {!loading && error && <ErrorState message={error} onRetry={reload} />}
 
             {!loading && !error && (
-                <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:items-start">
-                    {/* ================= LEFT: sticky side ================= */}
-                    <aside className="space-y-4 lg:sticky lg:top-6">
-                        {/* Progress card */}
-                        <Card className="px-5 py-6">
-                            <div className="flex items-center justify-center">
-                                <div className="relative grid h-32 w-32 place-items-center">
-                                    <svg
-                                        className="h-32 w-32 -rotate-90"
-                                        viewBox="0 0 100 100"
-                                    >
-                                        <circle
-                                            cx="50"
-                                            cy="50"
-                                            r="42"
-                                            fill="none"
-                                            stroke="var(--color-line-soft)"
-                                            strokeWidth="7"
-                                        />
-                                        <circle
-                                            cx="50"
-                                            cy="50"
-                                            r="42"
-                                            fill="none"
-                                            stroke="var(--color-accent)"
-                                            strokeWidth="7"
-                                            strokeLinecap="round"
-                                            strokeDasharray={`${(completion / 100) * 264} 264`}
-                                            style={{
-                                                transition:
-                                                    "stroke-dasharray 700ms ease-out"
-                                            }}
-                                        />
-                                    </svg>
-                                    <div className="absolute flex flex-col items-center">
-                                        <span className="font-display text-2xl font-bold tabular-nums leading-none text-ink">
-                                            {completion}%
-                                        </span>
-                                        <span className="mt-1 text-[10px] font-medium uppercase tracking-wider text-ink-muted">
-                                            complete
-                                        </span>
-                                    </div>
+                <div className="space-y-12">
+                    <section className="surface-dark rounded-xl px-8 py-10 sm:px-12 sm:py-12">
+                        <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
+                            <div className="min-w-0">
+                                <p className="mb-5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-canvas/50">
+                                    <span className="h-2 w-2 bg-accent" />
+                                    {today}
+                                </p>
+                                <h1 className="text-5xl leading-[0.95] text-canvas sm:text-7xl">
+                                    Hey, {firstName}.
+                                </h1>
+                                <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-canvas/55">
+                                    {pendingCount === 0
+                                        ? "You're all caught up. Nothing pending right now."
+                                        : `${pendingCount} assignment${
+                                              pendingCount === 1 ? "" : "s"
+                                          } still waiting for your confirmation.`}
+                                </p>
+
+                                <div className="mt-9 flex flex-wrap gap-x-10 gap-y-5">
+                                    {[
+                                        { label: "Pending", value: pendingCount },
+                                        { label: "Confirmed", value: submittedCount },
+                                        { label: "Groups", value: groups.length },
+                                        { label: "Courses", value: courses.length }
+                                    ].map((stat) => (
+                                        <div key={stat.label}>
+                                            <p className="tnum text-3xl font-semibold text-canvas">
+                                                {stat.value}
+                                            </p>
+                                            <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-canvas/40">
+                                                {stat.label}
+                                            </p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            <p className="mt-5 text-center text-sm text-ink-muted">
-                                <span className="font-semibold text-ink">
-                                    {submittedCount}
-                                </span>{" "}
-                                of {total} assignments confirmed
-                            </p>
-                        </Card>
-
-                        {/* Stat mini grid */}
-                        <Card className="divide-y divide-line">
-                            <StatRow label="Pending" value={pendingCount} tone="warn" />
-                            <StatRow label="Confirmed" value={submittedCount} />
-                            <StatRow label="Groups" value={groups.length} />
-                            <StatRow label="Courses" value={courses.length} />
-                        </Card>
-
-                        {/* Groups list */}
-                        <Card className="px-5 py-5">
-                            <div className="mb-3 flex items-center justify-between">
-                                <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                                    Your groups
-                                </p>
-                                <Link
-                                    to="/student/groups"
-                                    className="text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                            <div className="relative mx-auto grid h-44 w-44 shrink-0 place-items-center md:mx-0 md:h-52 md:w-52">
+                                <svg
+                                    className="h-full w-full -rotate-90"
+                                    viewBox="0 0 100 100"
                                 >
-                                    Manage →
-                                </Link>
-                            </div>
-
-                            {groups.length === 0 ? (
-                                <p className="py-3 text-center text-xs text-ink-faint">
-                                    You haven't joined a group yet.
-                                </p>
-                            ) : (
-                                <ul className="space-y-1.5">
-                                    {groups.map((g) => (
-                                        <li
-                                            key={g.id}
-                                            className="flex items-center justify-between rounded-md px-2.5 py-2 transition-colors hover:bg-canvas"
-                                        >
-                                            <span className="truncate text-sm font-medium text-ink">
-                                                {g.name}
-                                            </span>
-                                            <span className="shrink-0 text-[11px] text-ink-faint tabular-nums">
-                                                {g.members?.length || 0}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </Card>
-                    </aside>
-
-                    {/* ================= RIGHT: main ================= */}
-                    <div className="min-w-0 space-y-8">
-                        {/* Courses */}
-                        <section>
-                            <div className="mb-4 flex items-end justify-between">
-                                <div>
-                                    <h2 className="font-display text-lg font-bold tracking-tight text-ink">
-                                        My courses
-                                    </h2>
-                                    <p className="mt-0.5 text-xs text-ink-muted">
-                                        Click a course to see its assignments
-                                    </p>
-                                </div>
-                                {courses.length > 0 && (
-                                    <span className="text-xs font-medium text-ink-faint tabular-nums">
-                                        {courses.length}{" "}
-                                        {courses.length === 1
-                                            ? "course"
-                                            : "courses"}
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="42"
+                                        fill="none"
+                                        stroke="rgba(255,255,255,0.12)"
+                                        strokeWidth="6"
+                                    />
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="42"
+                                        fill="none"
+                                        stroke="var(--color-canvas)"
+                                        strokeWidth="6"
+                                        strokeLinecap="butt"
+                                        strokeDasharray={`${(completion / 100) * 264} 264`}
+                                        style={{
+                                            transition:
+                                                "stroke-dasharray 700ms ease-out"
+                                        }}
+                                    />
+                                </svg>
+                                <div className="absolute flex flex-col items-center">
+                                    <span className="tnum text-5xl font-semibold leading-none text-canvas">
+                                        {completion}
+                                        <span className="text-xl text-canvas/50">%</span>
                                     </span>
-                                )}
+                                    <span className="mt-2 font-mono text-[10px] uppercase tracking-wider text-canvas/40">
+                                        {submittedCount} / {total} done
+                                    </span>
+                                </div>
                             </div>
+                        </div>
+                    </section>
 
-                            {coursesLoading ? (
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {[0, 1].map((i) => (
+                    <section>
+                        <div className="mb-5 flex items-end justify-between border-b border-ink pb-3">
+                            <h2 className="text-2xl text-ink">My courses</h2>
+                            <span className="micro">
+                                {courses.length}{" "}
+                                {courses.length === 1 ? "course" : "courses"}
+                            </span>
+                        </div>
+
+                        {coursesLoading ? (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {[0, 1, 2].map((i) => (
+                                    <Card
+                                        key={i}
+                                        className="h-40 animate-pulse-soft px-5 py-5"
+                                    >
+                                        <div className="h-4 w-16 bg-line-soft" />
+                                        <div className="mt-4 h-5 w-3/4 bg-line-soft" />
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : courses.length === 0 ? (
+                            <Card className="border-dashed px-6 py-14 text-center">
+                                <p className="text-lg font-extrabold text-ink">
+                                    No courses yet
+                                </p>
+                                <p className="mx-auto mt-1 max-w-sm text-sm text-ink-muted">
+                                    Once your professor enrolls you, your
+                                    courses will appear here.
+                                </p>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {courses.map((course) => (
+                                    <button
+                                        key={course.id}
+                                        type="button"
+                                        onClick={() =>
+                                            navigate(
+                                                `/student/courses/${course.id}`
+                                            )
+                                        }
+                                        className="group text-left"
+                                    >
                                         <Card
-                                            key={i}
-                                            className="h-36 animate-pulse px-5 py-5"
+                                            hover
+                                            className="flex h-full flex-col px-6 py-6"
                                         >
-                                            <div className="h-4 w-16 rounded bg-line-soft" />
-                                            <div className="mt-3 h-4 w-3/4 rounded bg-line-soft" />
+                                            <div className="flex items-start justify-between gap-3">
+                                                <span className="font-mono text-xs font-semibold text-accent">
+                                                    {course.code}
+                                                </span>
+                                                <span className="tnum text-[11px] text-ink-faint">
+                                                    {course.assignment_count}{" "}
+                                                    {course.assignment_count === 1
+                                                        ? "task"
+                                                        : "tasks"}
+                                                </span>
+                                            </div>
+
+                                            <h3 className="mt-5 line-clamp-2 text-xl leading-snug text-ink">
+                                                {course.name}
+                                            </h3>
+
+                                            {course.professor_name && (
+                                                <div className="mt-4 flex items-center gap-2">
+                                                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-sm border border-line bg-canvas text-[10px] font-bold text-ink-soft">
+                                                        {initials(
+                                                            course.professor_name
+                                                        )}
+                                                    </span>
+                                                    <span className="truncate text-xs text-ink-muted">
+                                                        {course.professor_name}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-auto flex items-center justify-between border-t border-line pt-4 text-xs">
+                                                <span className="font-semibold text-ink">
+                                                    View assignments
+                                                </span>
+                                                <span className="text-ink transition-transform duration-150 group-hover:translate-x-1 group-hover:text-accent">
+                                                    →
+                                                </span>
+                                            </div>
                                         </Card>
-                                    ))}
-                                </div>
-                            ) : courses.length === 0 ? (
-                                <Card className="px-6 py-14 text-center">
-                                    <p className="font-display text-base font-bold text-ink">
-                                        No courses yet
-                                    </p>
-                                    <p className="mx-auto mt-1 max-w-sm text-sm text-ink-muted">
-                                        Once your professor enrolls you, your
-                                        courses will appear here.
-                                    </p>
-                                </Card>
-                            ) : (
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {courses.map((course) => (
-                                        <button
-                                            key={course.id}
-                                            type="button"
-                                            onClick={() =>
-                                                navigate(
-                                                    `/student/courses/${course.id}`
-                                                )
-                                            }
-                                            className="group text-left"
-                                        >
-                                            <Card
-                                                hover
-                                                className="flex h-full flex-col px-5 py-5 transition-all duration-200 group-hover:border-accent/40"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <span className="inline-flex items-center rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold tracking-tight text-accent">
-                                                        {course.code}
-                                                    </span>
-                                                    <span className="text-[11px] font-medium text-ink-faint tabular-nums">
-                                                        {course.assignment_count}{" "}
-                                                        {course.assignment_count ===
-                                                        1
-                                                            ? "task"
-                                                            : "tasks"}
-                                                    </span>
-                                                </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </section>
 
-                                                <h3 className="mt-4 font-display text-base font-bold leading-snug tracking-tight text-ink line-clamp-2">
-                                                    {course.name}
-                                                </h3>
-
-                                                {course.professor_name && (
-                                                    <div className="mt-3 flex items-center gap-2">
-                                                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-canvas text-[10px] font-semibold text-ink-soft">
-                                                            {initials(
-                                                                course.professor_name
-                                                            )}
-                                                        </span>
-                                                        <span className="truncate text-xs text-ink-muted">
-                                                            {course.professor_name}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                <div className="mt-auto flex items-center justify-between pt-4 text-xs">
-                                                    <span className="text-ink-muted">
-                                                        View assignments
-                                                    </span>
-                                                    <svg
-                                                        className="h-3.5 w-3.5 text-ink-faint transition-transform duration-200 group-hover:translate-x-1 group-hover:text-accent"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2.5"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    >
-                                                        <line
-                                                            x1="5"
-                                                            y1="12"
-                                                            x2="19"
-                                                            y2="12"
-                                                        />
-                                                        <polyline points="12 5 19 12 12 19" />
-                                                    </svg>
-                                                </div>
-                                            </Card>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-
-                        {/* Next up */}
+                    <div className="grid gap-10 lg:grid-cols-[1fr_300px] lg:items-start">
                         <section>
-                            <div className="mb-4 flex items-end justify-between">
-                                <div>
-                                    <h2 className="font-display text-lg font-bold tracking-tight text-ink">
-                                        Next up
-                                    </h2>
-                                    <p className="mt-0.5 text-xs text-ink-muted">
-                                        Pending assignments sorted by due date
-                                    </p>
-                                </div>
+                            <div className="mb-2 flex items-end justify-between border-b border-ink pb-3">
+                                <h2 className="text-2xl text-ink">Next up</h2>
                                 {upcoming.length > 0 && (
                                     <Link
                                         to="/student/assignments"
-                                        className="text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                                        className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
                                     >
                                         View all →
                                     </Link>
@@ -324,55 +254,42 @@ const StudentDashboard = () => {
                             </div>
 
                             {upcoming.length === 0 ? (
-                                <Card className="px-6 py-14 text-center">
-                                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success">
-                                        <svg
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2.5"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <polyline points="20 6 9 17 4 12" />
-                                        </svg>
-                                    </div>
-                                    <p className="font-display text-base font-bold text-ink">
+                                <div className="py-14 text-center">
+                                    <p className="text-lg font-extrabold text-ink">
                                         You're all caught up
                                     </p>
-                                    <p className="mx-auto mt-1 max-w-sm text-sm text-ink-muted">
+                                    <p className="mt-1 text-sm text-ink-muted">
                                         No pending assignments right now.
                                     </p>
-                                </Card>
+                                </div>
                             ) : (
-                                <Card className="divide-y divide-line">
-                                    {upcoming.map((a) => {
+                                <ul className="divide-y divide-line">
+                                    {upcoming.map((a, index) => {
                                         const due = dueLabel(a.due_date);
                                         return (
-                                            <div
+                                            <li
                                                 key={a.id}
-                                                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                                className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-5"
                                             >
+                                                <span className="tnum w-6 shrink-0 text-xs text-ink-faint">
+                                                    {String(index + 1).padStart(2, "0")}
+                                                </span>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <p className="truncate font-medium text-ink">
+                                                        <p className="truncate text-[15px] font-semibold text-ink">
                                                             {a.title}
                                                         </p>
                                                         <Badge tone={due.tone}>
                                                             {due.text}
                                                         </Badge>
-                                                        {a.submission_type ===
-                                                            "group" && (
+                                                        {a.submission_type === "group" && (
                                                             <Badge tone="neutral">
                                                                 Group
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <p className="mt-1 text-xs text-ink-muted">
-                                                        Due{" "}
-                                                        {formatDate(a.due_date)}
+                                                    <p className="micro mt-1.5">
+                                                        Due {formatDate(a.due_date)}
                                                     </p>
                                                 </div>
 
@@ -380,28 +297,58 @@ const StudentDashboard = () => {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() =>
-                                                            setAsking(a)
-                                                        }
+                                                        onClick={() => setAsking(a)}
                                                     >
                                                         ✦ Ask AI
                                                     </Button>
                                                     <Button
                                                         size="sm"
                                                         variant="accent"
-                                                        onClick={() =>
-                                                            setActive(a)
-                                                        }
+                                                        onClick={() => setActive(a)}
                                                     >
                                                         Confirm
                                                     </Button>
                                                 </div>
-                                            </div>
+                                            </li>
                                         );
                                     })}
-                                </Card>
+                                </ul>
                             )}
                         </section>
+
+                        <aside>
+                            <div className="mb-2 flex items-end justify-between border-b border-ink pb-3">
+                                <h2 className="text-2xl text-ink">Groups</h2>
+                                <Link
+                                    to="/student/groups"
+                                    className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
+                                >
+                                    Manage →
+                                </Link>
+                            </div>
+
+                            {groups.length === 0 ? (
+                                <p className="py-8 text-center text-sm text-ink-muted">
+                                    You haven't joined a group yet.
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-line">
+                                    {groups.map((g) => (
+                                        <li
+                                            key={g.id}
+                                            className="flex items-center justify-between py-3.5"
+                                        >
+                                            <span className="truncate text-sm font-semibold text-ink">
+                                                {g.name}
+                                            </span>
+                                            <span className="tnum shrink-0 text-xs text-ink-faint">
+                                                {g.members?.length || 0} members
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </aside>
                     </div>
                 </div>
             )}
@@ -414,22 +361,6 @@ const StudentDashboard = () => {
 
             <AskAIModal assignment={asking} onClose={() => setAsking(null)} />
         </>
-    );
-};
-
-const StatRow = ({ label, value, tone }) => {
-    const valueClass =
-        tone === "warn" ? "text-warn" : "text-ink";
-
-    return (
-        <div className="flex items-center justify-between px-5 py-3.5">
-            <span className="text-xs font-medium text-ink-muted">{label}</span>
-            <span
-                className={`font-display text-base font-bold tabular-nums ${valueClass}`}
-            >
-                {value}
-            </span>
-        </div>
     );
 };
 

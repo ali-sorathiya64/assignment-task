@@ -131,6 +131,12 @@ const StudentGroups = () => {
         }
     };
 
+    const errorBox = formError && (
+        <p className="mt-4 rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+            {formError}
+        </p>
+    );
+
     return (
         <>
             <PageHeader
@@ -166,77 +172,111 @@ const StudentGroups = () => {
             )}
 
             {!loading && !error && groups.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-5 md:grid-cols-2">
                     {groups.map((group) => {
                         const isLeader = group.leader_id === user?.id;
 
                         return (
-                            <Card key={group.id} className="px-5 py-5">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-display text-base font-bold tracking-tight text-ink">
+                            <Card key={group.id} className="flex flex-col">
+                                <div className="flex items-start justify-between gap-3 border-b border-line px-6 py-5">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="truncate text-xl text-ink">
                                                 {group.name}
                                             </h3>
                                             {isLeader && (
                                                 <Badge tone="accent">Leader</Badge>
                                             )}
                                         </div>
-                                        <p className="mt-1 text-xs text-ink-muted">
+                                        <p className="micro mt-2">
                                             {group.members?.length || 0} member
-                                            {group.members?.length === 1
-                                                ? ""
-                                                : "s"}
+                                            {group.members?.length === 1 ? "" : "s"}
                                         </p>
                                     </div>
 
                                     {isLeader && (
-                                        <div className="flex gap-1">
+                                        <div className="flex shrink-0 gap-1">
                                             <button
                                                 type="button"
+                                                title="Rename group"
+                                                aria-label="Rename group"
                                                 onClick={() => {
                                                     setEditing(group);
                                                     setEditName(group.name);
                                                     setFormError("");
                                                 }}
-                                                className="rounded-md px-2 py-1 text-[11px] font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
+                                                className="grid h-8 w-8 place-items-center rounded-md border border-line text-ink-muted transition-colors hover:border-ink hover:text-ink"
                                             >
-                                                Edit
+                                                <svg
+                                                    width="14"
+                                                    height="14"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <path d="M12 20h9" />
+                                                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                                </svg>
                                             </button>
                                             <button
                                                 type="button"
+                                                title="Delete group"
+                                                aria-label="Delete group"
                                                 onClick={() => {
                                                     setDeleting(group);
                                                     setFormError("");
                                                 }}
-                                                className="rounded-md px-2 py-1 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+                                                className="grid h-8 w-8 place-items-center rounded-md border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger-soft hover:text-danger"
                                             >
-                                                Delete
+                                                <svg
+                                                    width="14"
+                                                    height="14"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                >
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                    <path d="M10 11v6M14 11v6" />
+                                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                                </svg>
                                             </button>
                                         </div>
                                     )}
                                 </div>
 
-                                <ul className="mt-4 space-y-2">
+                                <ul className="flex-1 divide-y divide-line-soft px-6">
                                     {(group.members || []).map((member) => (
                                         <li
                                             key={member.id}
-                                            className="flex items-center gap-3 rounded-md bg-canvas px-3 py-2"
+                                            className="flex items-center gap-3 py-3"
                                         >
-                                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-ink-soft">
+                                            <span
+                                                className={`grid h-9 w-9 shrink-0 place-items-center rounded-md border text-[11px] font-bold ${
+                                                    member.is_leader
+                                                        ? "border-ink bg-ink text-canvas"
+                                                        : "border-line bg-canvas text-ink-soft"
+                                                }`}
+                                            >
                                                 {initials(member.name)}
                                             </span>
                                             <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-ink">
+                                                <p className="truncate text-sm font-semibold text-ink">
                                                     {member.name}
                                                     {member.id === user?.id && (
-                                                        <span className="ml-1 text-ink-faint">
+                                                        <span className="ml-1 font-normal text-ink-faint">
                                                             (you)
                                                         </span>
                                                     )}
                                                     {member.is_leader && (
-                                                        <span className="ml-1 text-[10px] font-medium text-accent">
-                                                            · leader
+                                                        <span className="ml-1.5 font-mono text-[10px] font-medium uppercase text-accent">
+                                                            leader
                                                         </span>
                                                     )}
                                                 </p>
@@ -255,7 +295,7 @@ const StudentGroups = () => {
                                                                 member.id
                                                             )
                                                         }
-                                                        className="text-[11px] font-medium text-ink-faint transition-colors hover:text-danger"
+                                                        className="text-[11px] font-semibold text-ink-faint transition-colors hover:text-danger"
                                                     >
                                                         Remove
                                                     </button>
@@ -264,25 +304,28 @@ const StudentGroups = () => {
                                     ))}
                                 </ul>
 
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className="mt-4 w-full"
-                                    onClick={() => {
-                                        setFormError("");
-                                        setAddingTo(group);
-                                    }}
-                                    disabled={!isLeader}
-                                >
-                                    {isLeader ? "Add member" : "Only leader can add members"}
-                                </Button>
+                                <div className="border-t border-line px-6 py-4">
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={() => {
+                                            setFormError("");
+                                            setAddingTo(group);
+                                        }}
+                                        disabled={!isLeader}
+                                    >
+                                        {isLeader
+                                            ? "+ Add member"
+                                            : "Only leader can add members"}
+                                    </Button>
+                                </div>
                             </Card>
                         );
                     })}
                 </div>
             )}
 
-            {/* Create modal */}
             <Modal
                 open={creating}
                 onClose={() => setCreating(false)}
@@ -314,14 +357,9 @@ const StudentGroups = () => {
                     value={groupName}
                     onChange={(event) => setGroupName(event.target.value)}
                 />
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
 
-            {/* Add member modal */}
             <Modal
                 open={Boolean(addingTo)}
                 onClose={() => setAddingTo(null)}
@@ -356,14 +394,9 @@ const StudentGroups = () => {
                 <p className="mt-2 text-xs text-ink-muted">
                     Numbers are treated as student ID; anything else as email.
                 </p>
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
 
-            {/* Edit group modal */}
             <Modal
                 open={Boolean(editing)}
                 onClose={() => setEditing(null)}
@@ -394,14 +427,9 @@ const StudentGroups = () => {
                     value={editName}
                     onChange={(event) => setEditName(event.target.value)}
                 />
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
 
-            {/* Delete group modal */}
             <Modal
                 open={Boolean(deleting)}
                 onClose={() => setDeleting(null)}
@@ -426,11 +454,7 @@ const StudentGroups = () => {
                     This will permanently delete <strong>{deleting?.name}</strong>.
                     Groups that have received assignments cannot be deleted.
                 </p>
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
         </>
     );

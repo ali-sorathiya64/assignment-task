@@ -94,8 +94,8 @@ const CourseFormModal = ({ open, course, onClose, onSaved }) => {
                 </>
             }
         >
-            <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+            <div className="space-y-5">
+                <div className="grid gap-5 sm:grid-cols-[2fr_1fr]">
                     <div>
                         <label className="label" htmlFor="name">
                             Course name
@@ -117,7 +117,7 @@ const CourseFormModal = ({ open, course, onClose, onSaved }) => {
                         <input
                             id="code"
                             name="code"
-                            className="field uppercase"
+                            className="field font-mono uppercase"
                             placeholder="CS301"
                             value={form.code}
                             onChange={change}
@@ -142,7 +142,7 @@ const CourseFormModal = ({ open, course, onClose, onSaved }) => {
                 </div>
 
                 {error && (
-                    <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                    <p className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
                         {error}
                     </p>
                 )}

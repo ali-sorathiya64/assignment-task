@@ -17,27 +17,30 @@ const Modal = ({ open, onClose, title, description, children, footer }) => {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/30 p-0 backdrop-blur-sm sm:items-center sm:p-4 animate-fade-in">
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/60 p-0 backdrop-blur-[3px] animate-fade-in sm:items-center sm:p-6">
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-label={title}
-                className="w-full max-w-lg rounded-t-xl border border-line bg-surface shadow-lg
-                           sm:rounded-xl animate-modal-in"
+                className="w-full max-w-lg rounded-t-2xl border border-ink bg-surface animate-modal-in sm:rounded-xl sm:shadow-lg"
             >
-                <div className="border-b border-line px-6 py-5">
-                    <h2 className="font-serif text-xl tracking-tight text-ink">
+                <div className="px-7 pb-5 pt-7">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-ink">
                         {title}
                     </h2>
                     {description && (
-                        <p className="mt-1 text-sm text-ink-muted">{description}</p>
+                        <p className="mt-1.5 text-sm text-ink-muted">
+                            {description}
+                        </p>
                     )}
                 </div>
 
-                <div className="max-h-[65vh] overflow-y-auto px-6 py-5">{children}</div>
+                <div className="scroll-thin max-h-[60vh] overflow-y-auto border-t border-line px-7 py-6">
+                    {children}
+                </div>
 
                 {footer && (
-                    <div className="flex justify-end gap-2 border-t border-line bg-canvas/50 px-6 py-4">
+                    <div className="flex justify-end gap-3 border-t border-line bg-canvas/70 px-7 py-4">
                         {footer}
                     </div>
                 )}

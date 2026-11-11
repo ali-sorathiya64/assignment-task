@@ -63,58 +63,47 @@ const StudentGrades = () => {
                 />
             ) : (
                 <>
-                    <div className="mb-6 grid gap-3 sm:grid-cols-3">
-                        <Card className="px-5 py-4">
-                            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                                Graded
-                            </p>
-                            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink">
+                    <Card className="mb-10 grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                        <div className="px-6 py-6">
+                            <p className="micro">Graded</p>
+                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-ink">
                                 {graded.length}
-                                <span className="text-sm font-medium text-ink-muted">
+                                <span className="text-xl text-ink-faint">
                                     {" "}/ {grades.length}
                                 </span>
                             </p>
-                        </Card>
-                        <Card className="px-5 py-4">
-                            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                                Total score
-                            </p>
-                            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-ink">
+                        </div>
+                        <div className="px-6 py-6">
+                            <p className="micro">Total score</p>
+                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-ink">
                                 {totalEarned}
-                                <span className="text-sm font-medium text-ink-muted">
+                                <span className="text-xl text-ink-faint">
                                     {" "}/ {totalMax}
                                 </span>
                             </p>
-                        </Card>
-                        <Card className="px-5 py-4">
-                            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                                Average
+                        </div>
+                        <div className="px-6 py-6">
+                            <p className="micro">Average</p>
+                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-accent">
+                                {average}
+                                <span className="text-xl">%</span>
                             </p>
-                            <p className="mt-2 font-display text-2xl font-bold tabular-nums text-accent">
-                                {average}%
-                            </p>
-                        </Card>
-                    </div>
+                        </div>
+                    </Card>
 
-                    <div className="mb-5 inline-flex rounded-md border border-line bg-surface p-1">
+                    <div className="mb-8 flex gap-6 border-b border-line">
                         {filters.map((item) => (
                             <button
                                 key={item.key}
                                 onClick={() => setFilter(item.key)}
-                                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                                className={`relative -mb-px pb-3 text-sm font-semibold transition-colors ${
                                     filter === item.key
-                                        ? "bg-ink text-white"
-                                        : "text-ink-soft hover:text-ink"
+                                        ? "text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-accent"
+                                        : "text-ink-muted hover:text-ink"
                                 }`}
                             >
                                 {item.label}
-                                <span
-                                    className={`ml-1.5 text-[10px] ${
-                                        filter === item.key
-                                            ? "text-white/60"
-                                            : "text-ink-faint"
-                                    }`}
-                                >
+                                <span className="tnum ml-2 text-xs text-ink-faint">
                                     {item.count}
                                 </span>
                             </button>
@@ -135,7 +124,7 @@ const StudentGrades = () => {
                             }
                         />
                     ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {visible.map((g) => (
                                 <GradeCard key={g.assignment_id} grade={g} />
                             ))}
@@ -160,33 +149,23 @@ const GradeCard = ({ grade }) => {
               : "danger"
         : "neutral";
 
-    const toneClass = {
-        success: "text-success",
-        warn: "text-warn",
-        danger: "text-danger",
-        neutral: "text-ink-faint"
-    }[tone];
-
-    const toneBg = {
-        success: "bg-success-soft",
-        warn: "bg-warn-soft",
-        danger: "bg-danger-soft",
-        neutral: "bg-canvas"
+    const barClass = {
+        success: "bg-success",
+        warn: "bg-warn",
+        danger: "bg-danger",
+        neutral: "bg-line"
     }[tone];
 
     return (
-        <Card className="px-5 py-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
+        <Card className="overflow-hidden">
+            <div className="flex flex-col sm:flex-row">
+                <div className="min-w-0 flex-1 px-6 py-6">
                     <div className="flex flex-wrap items-center gap-2">
                         {grade.course_code && (
-                            <span className="inline-flex items-center rounded-md bg-accent-soft px-2 py-0.5 text-[10px] font-semibold tracking-tight text-accent">
+                            <span className="font-mono text-xs font-semibold text-accent">
                                 {grade.course_code}
                             </span>
                         )}
-                        <h3 className="font-display text-base font-bold tracking-tight text-ink">
-                            {grade.title}
-                        </h3>
                         <Badge tone="neutral">
                             {grade.submission_type === "group"
                                 ? "Group"
@@ -198,57 +177,61 @@ const GradeCard = ({ grade }) => {
                         {graded &&
                             grade.submission_type === "group" &&
                             !grade.has_override && (
-                                <Badge tone="accent">
-                                    Common group grade
-                                </Badge>
+                                <Badge tone="accent">Common group grade</Badge>
                             )}
-                        {!graded && (
-                            <Badge tone="neutral">Awaiting grade</Badge>
-                        )}
+                        {!graded && <Badge tone="neutral">Awaiting grade</Badge>}
                     </div>
 
+                    <h3 className="mt-3 text-xl font-extrabold tracking-tight text-ink">
+                        {grade.title}
+                    </h3>
+
                     {graded && grade.feedback && (
-                        <div className="mt-3 rounded-md border border-line-soft bg-canvas/60 px-3 py-2">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
-                                Feedback
-                            </p>
-                            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+                        <div className="mt-4 border-l-2 border-accent bg-accent-soft/60 px-4 py-3">
+                            <p className="micro text-accent-ink">Feedback</p>
+                            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
                                 {grade.feedback}
                             </p>
                         </div>
                     )}
 
                     {!graded && (
-                        <p className="mt-2 text-xs text-ink-muted">
+                        <p className="mt-3 text-xs text-ink-muted">
                             Not graded yet. You'll see the score and feedback
                             here once your professor reviews it.
                         </p>
                     )}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end">
-                    <div className={`rounded-xl px-4 py-3 text-right ${toneBg}`}>
-                        {graded ? (
-                            <>
-                                <p
-                                    className={`font-display text-3xl font-bold tabular-nums leading-none ${toneClass}`}
-                                >
-                                    {score}
-                                </p>
-                                <p className="mt-1 text-[11px] font-medium text-ink-muted">
-                                    out of {max}
-                                </p>
-                            </>
-                        ) : (
-                            <>
-                                <p className="font-display text-lg font-bold leading-none text-ink-faint">
-                                    —
-                                </p>
-                                <p className="mt-1 text-[11px] font-medium text-ink-muted">
-                                    of {max}
-                                </p>
-                            </>
-                        )}
+                <div
+                    className={`flex shrink-0 flex-col justify-between px-8 py-6 sm:w-48 sm:border-l sm:border-ink ${
+                        graded ? "bg-ink text-canvas" : "bg-canvas text-ink-faint"
+                    }`}
+                >
+                    <p
+                        className={`font-mono text-[10px] uppercase tracking-wider ${
+                            graded ? "text-canvas/50" : "text-ink-faint"
+                        }`}
+                    >
+                        Score
+                    </p>
+                    <div className="my-3">
+                        <p className="tnum text-6xl font-semibold leading-none">
+                            {graded ? score : "—"}
+                        </p>
+                        <p
+                            className={`tnum mt-2 text-xs ${
+                                graded ? "text-canvas/50" : "text-ink-faint"
+                            }`}
+                        >
+                            out of {max}
+                        </p>
+                    </div>
+                    <div className="h-1 w-full bg-white/15">
+                        <div
+                            className={`h-full ${graded ? barClass : "bg-line"}`}
+                            style={{ width: `${graded ? pct : 0}%` }}
+                        />
                     </div>
                 </div>
             </div>

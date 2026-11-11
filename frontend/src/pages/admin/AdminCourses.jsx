@@ -61,10 +61,7 @@ const AdminCourses = () => {
                     title="No courses yet"
                     description="Create your first course to start enrolling students and attaching assignments."
                     action={
-                        <Button
-                            variant="accent"
-                            onClick={() => setFormOpen(true)}
-                        >
+                        <Button variant="accent" onClick={() => setFormOpen(true)}>
                             New course
                         </Button>
                     }
@@ -72,15 +69,15 @@ const AdminCourses = () => {
             )}
 
             {!loading && !error && courses.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {courses.map((course) => (
                         <Card
                             key={course.id}
                             hover
-                            className="flex h-full flex-col px-5 py-5"
+                            className="flex h-full flex-col px-6 py-6"
                         >
                             <div className="flex items-start justify-between gap-3">
-                                <span className="inline-flex items-center rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold tracking-tight text-accent">
+                                <span className="font-mono text-xs font-semibold text-accent">
                                     {course.code}
                                 </span>
                                 <button
@@ -89,36 +86,32 @@ const AdminCourses = () => {
                                         setEditing(course);
                                         setFormOpen(true);
                                     }}
-                                    className="text-[11px] font-medium text-ink-muted transition-colors hover:text-ink"
+                                    className="text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink"
                                 >
                                     Edit
                                 </button>
                             </div>
 
-                            <h3 className="mt-4 font-display text-base font-bold leading-snug tracking-tight text-ink line-clamp-2">
+                            <h3 className="mt-5 line-clamp-2 text-xl leading-snug text-ink">
                                 {course.name}
                             </h3>
 
                             {course.description && (
-                                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-soft">
+                                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-muted">
                                     {course.description}
                                 </p>
                             )}
 
-                            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line-soft pt-3">
+                            <div className="mt-6 grid grid-cols-2 gap-3 border-t border-line pt-4">
                                 <div>
-                                    <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
-                                        Students
-                                    </p>
-                                    <p className="mt-0.5 font-display text-base font-bold tabular-nums text-ink">
+                                    <p className="micro">Students</p>
+                                    <p className="tnum mt-1 text-3xl font-semibold text-ink">
                                         {course.student_count}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
-                                        Assignments
-                                    </p>
-                                    <p className="mt-0.5 font-display text-base font-bold tabular-nums text-ink">
+                                    <p className="micro">Assignments</p>
+                                    <p className="tnum mt-1 text-3xl font-semibold text-ink">
                                         {course.assignment_count}
                                     </p>
                                 </div>
@@ -126,14 +119,14 @@ const AdminCourses = () => {
 
                             <Link
                                 to={`/admin/courses/${course.id}`}
-                                className="mt-4 block"
+                                className="mt-6 block"
                             >
                                 <Button
                                     variant="secondary"
                                     size="sm"
                                     className="w-full"
                                 >
-                                    Manage course
+                                    Manage course →
                                 </Button>
                             </Link>
                         </Card>

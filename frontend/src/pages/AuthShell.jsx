@@ -1,77 +1,56 @@
 import Logo from "../components/layout/Logo.jsx";
 
+const Item = ({ index, children }) => (
+    <li className="flex items-baseline gap-4 border-t border-white/10 py-4">
+        <span className="font-mono text-[11px] text-accent">0{index}</span>
+        <span className="text-sm text-canvas/70">{children}</span>
+    </li>
+);
+
 const AuthShell = ({ title, subtitle, children, aside }) => (
-    <div className="min-h-screen lg:grid lg:grid-cols-2">
-        <section className="relative hidden flex-col justify-between overflow-hidden bg-zinc-950 p-12 lg:flex">
-            <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-violet-600/25 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-fuchsia-500/15 blur-3xl" />
-
-            <div className="pointer-events-none absolute right-0 top-0 h-full w-px bg-linear-to-b from-transparent via-white/10 to-transparent" />
-
-            <div className="relative z-10">
-                <Logo
-                    className="[&_span:last-child]:text-white"
-                    linkTo="/login"
-                />
+    <div className="min-h-screen lg:grid lg:grid-cols-[1.1fr_1fr]">
+        <section className="surface-dark hidden flex-col justify-between rounded-none p-14 lg:flex">
+            <div className="flex items-center justify-between">
+                <Logo dark linkTo="/login" />
+                <span className="font-mono text-[11px] uppercase tracking-wider text-canvas/40">
+                    {aside}
+                </span>
             </div>
 
-            <div className="relative z-10 max-w-md">
-                <h2 className="font-display text-4xl font-bold leading-tight tracking-tight text-white">
+            <div className="max-w-lg">
+                <p className="mb-6 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-canvas/50">
+                    <span className="h-2 w-2 bg-accent" />
+                    Assignment management
+                </p>
+                <h2 className="font-display text-6xl font-extrabold leading-[0.95] tracking-[-0.045em] text-canvas">
                     A calmer way to run assignments.
                 </h2>
-
-                <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/55">
+                <p className="mt-7 max-w-sm text-[15px] leading-relaxed text-canvas/55">
                     Students form groups, upload their work, and confirm
                     submissions. Professors see every move in real time.
                 </p>
-
-                <ul className="mt-10 space-y-3 text-sm text-white/60">
-                    <Item>Create groups and invite classmates</Item>
-                    <Item>Submit individual or group assignments</Item>
-                    <Item>Track progress across every course</Item>
-                </ul>
             </div>
 
-            <div className="relative z-10 flex items-center gap-3">
-                <div className="h-px w-10 bg-white/15" />
-                <p className="text-xs font-medium tracking-wide text-white/30">
-                    {aside}
-                </p>
-            </div>
-
-            <div
-                className="pointer-events-none absolute inset-0 opacity-[0.025]"
-                style={{
-                    backgroundImage:
-                        "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-                    backgroundSize: "22px 22px"
-                }}
-            />
+            <ul className="max-w-lg">
+                <Item index={1}>Create groups and invite classmates</Item>
+                <Item index={2}>Submit individual or group assignments</Item>
+                <Item index={3}>Track progress across every course</Item>
+            </ul>
         </section>
 
         <section className="flex min-h-screen items-center justify-center bg-canvas px-5 py-12 lg:px-16">
-            <div className="w-full max-w-md">
-                <Logo className="mb-10 lg:hidden" linkTo="/login" />
+            <div className="animate-rise-in w-full max-w-sm">
+                <Logo className="mb-12 lg:hidden" linkTo="/login" />
 
-                <div className="mb-8">
-                    <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
-                        {title}
-                    </h1>
-                    <p className="mt-2 text-sm text-ink-muted">{subtitle}</p>
+                <div className="mb-9 border-b border-ink pb-7">
+                    <h1 className="text-[40px] text-ink">{title}</h1>
+                    <p className="mt-3 text-sm text-ink-muted">{subtitle}</p>
                 </div>
 
                 {children}
             </div>
         </section>
     </div>
-);
-
-
-const Item = ({ children }) => (
-    <li className="flex items-start gap-3">
-        <span className="mt-1.5 inline-block h-1 w-1 shrink-0 rounded-full bg-violet-400" />
-        <span>{children}</span>
-    </li>
 );
 
 export default AuthShell;

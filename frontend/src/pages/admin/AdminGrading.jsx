@@ -5,9 +5,15 @@ import { readError } from "../../api/client.js";
 import { formatDate } from "../../api/format.js";
 import PageHeader from "../../components/layout/PageHeader.jsx";
 import Badge from "../../components/ui/Badge.jsx";
+import Button from "../../components/ui/Button.jsx";
 import Card from "../../components/ui/Card.jsx";
 import Progress from "../../components/ui/Progress.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
+
+const gradedOf = (r) =>
+    r.submission_type === "group"
+        ? r.group_graded_count
+        : r.individual_graded_count;
 
 const AdminGrading = () => {
     const [rows, setRows] = useState([]);
@@ -34,23 +40,12 @@ const AdminGrading = () => {
     if (loading) return <Spinner label="Loading grading dashboard" />;
     if (error) return <ErrorState message={error} onRetry={load} />;
 
-    const totalPending = rows.reduce((sum, r) => {
-        const graded =
-            r.submission_type === "group"
-                ? r.group_graded_count
-                : r.individual_graded_count;
-        return sum + Math.max(r.submitted_count - graded, 0);
-    }, 0);
+    const totalPending = rows.reduce(
+        (sum, r) => sum + Math.max(r.submitted_count - gradedOf(r), 0),
+        0
+    );
+    const totalGraded = rows.reduce((sum, r) => sum + gradedOf(r), 0);
 
-    const totalGraded = rows.reduce((sum, r) => {
-        const graded =
-            r.submission_type === "group"
-                ? r.group_graded_count
-                : r.individual_graded_count;
-        return sum + graded;
-    }, 0);
-
-    // Group rows by course
     const byCourse = rows.reduce((acc, row) => {
         const key = row.course_id || "none";
         if (!acc[key]) {
@@ -73,24 +68,30 @@ const AdminGrading = () => {
                 subtitle="Review submitted work and record grades with feedback."
             />
 
-            {/* Summary strip */}
-            <div className="mb-6 grid gap-3 sm:grid-cols-3">
-                <SummaryTile
-                    label="Assignments"
-                    value={rows.length}
-                    tone="default"
-                />
-                <SummaryTile
-                    label="Pending grading"
-                    value={totalPending}
-                    tone={totalPending > 0 ? "warn" : "success"}
-                />
-                <SummaryTile
-                    label="Graded"
-                    value={totalGraded}
-                    tone="success"
-                />
-            </div>
+            <Card className="mb-12 grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                <div className="px-6 py-6">
+                    <p className="micro">Assignments</p>
+                    <p className="tnum mt-4 text-5xl font-semibold leading-none text-ink">
+                        {rows.length}
+                    </p>
+                </div>
+                <div className="px-6 py-6">
+                    <p className="micro">Pending grading</p>
+                    <p
+                        className={`tnum mt-4 text-5xl font-semibold leading-none ${
+                            totalPending > 0 ? "text-warn" : "text-success"
+                        }`}
+                    >
+                        {totalPending}
+                    </p>
+                </div>
+                <div className="px-6 py-6">
+                    <p className="micro">Graded</p>
+                    <p className="tnum mt-4 text-5xl font-semibold leading-none text-accent">
+                        {totalGraded}
+                    </p>
+                </div>
+            </Card>
 
             {rows.length === 0 ? (
                 <EmptyState
@@ -98,19 +99,21 @@ const AdminGrading = () => {
                     description="Attach assignments to a course to start grading."
                 />
             ) : (
-                <div className="space-y-8">
+                <div className="space-y-12">
                     {Object.values(byCourse).map((course) => (
                         <section key={course.course_id || "none"}>
-                            <div className="mb-3 flex items-center gap-3">
-                                {course.course_code && (
-                                    <span className="inline-flex items-center rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold tracking-tight text-accent">
-                                        {course.course_code}
-                                    </span>
-                                )}
-                                <h2 className="font-display text-base font-bold tracking-tight text-ink">
-                                    {course.course_name || "Unassigned course"}
-                                </h2>
-                                <span className="text-xs text-ink-faint">
+                            <div className="mb-5 flex items-end justify-between gap-4 border-b border-ink pb-3">
+                                <div className="flex min-w-0 items-baseline gap-3">
+                                    {course.course_code && (
+                                        <span className="font-mono text-xs font-semibold text-accent">
+                                            {course.course_code}
+                                        </span>
+                                    )}
+                                    <h2 className="truncate text-2xl text-ink">
+                                        {course.course_name || "Unassigned course"}
+                                    </h2>
+                                </div>
+                                <span className="micro shrink-0">
                                     {course.assignments.length}{" "}
                                     {course.assignments.length === 1
                                         ? "assignment"
@@ -118,7 +121,7 @@ const AdminGrading = () => {
                                 </span>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                                 {course.assignments.map((row) => (
                                     <GradingRow key={row.assignment_id} row={row} />
                                 ))}
@@ -131,91 +134,60 @@ const AdminGrading = () => {
     );
 };
 
-const SummaryTile = ({ label, value, tone }) => {
-    const valueClass =
-        tone === "warn"
-            ? "text-warn"
-            : tone === "success"
-              ? "text-success"
-              : "text-ink";
-
-    return (
-        <Card className="px-5 py-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                {label}
-            </p>
-            <p
-                className={`mt-2 font-display text-2xl font-bold tabular-nums ${valueClass}`}
-            >
-                {value}
-            </p>
-        </Card>
-    );
-};
-
 const GradingRow = ({ row }) => {
-    const graded =
-        row.submission_type === "group"
-            ? row.group_graded_count
-            : row.individual_graded_count;
+    const graded = gradedOf(row);
     const total = row.submitted_count;
     const pending = Math.max(total - graded, 0);
     const rate = total > 0 ? Math.round((graded / total) * 100) : 0;
     const allDone = total > 0 && pending === 0;
+    const isGroup = row.submission_type === "group";
 
     return (
-        <Card hover className="px-5 py-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-display text-[15px] font-bold tracking-tight text-ink">
-                            {row.title}
-                        </h3>
-                        <Badge tone="neutral">
-                            {row.submission_type === "group"
-                                ? "Group"
-                                : "Individual"}
-                        </Badge>
-                        {total === 0 ? (
-                            <Badge tone="neutral">No submissions</Badge>
-                        ) : allDone ? (
-                            <Badge tone="success">✓ All graded</Badge>
-                        ) : (
-                            <Badge tone="warn">{pending} pending</Badge>
-                        )}
-                    </div>
+        <Card
+            hover
+            className={`flex flex-col gap-6 border-l-4 px-6 py-6 lg:flex-row lg:items-center ${
+                isGroup ? "border-l-ink" : "border-l-accent"
+            }`}
+        >
+            <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="neutral">{isGroup ? "Group" : "Individual"}</Badge>
+                    {total === 0 ? (
+                        <Badge tone="neutral">No submissions</Badge>
+                    ) : allDone ? (
+                        <Badge tone="success">✓ All graded</Badge>
+                    ) : (
+                        <Badge tone="warn">{pending} pending</Badge>
+                    )}
+                </div>
 
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                        <span>Due {formatDate(row.due_date)}</span>
-                        <span className="text-ink-faint">·</span>
-                        <span>Max {row.max_score}</span>
-                        <span className="text-ink-faint">·</span>
-                        <span className="tabular-nums">
+                <h3 className="mt-3 text-xl font-extrabold tracking-tight text-ink">
+                    {row.title}
+                </h3>
+
+                <p className="micro mt-3 normal-case">
+                    Due {formatDate(row.due_date)} · Max {row.max_score}
+                </p>
+            </div>
+
+            <div className="flex items-center gap-5 lg:w-80 lg:shrink-0">
+                <div className="flex-1">
+                    <div className="mb-2 flex items-center justify-between">
+                        <span className="micro">
                             {graded}/{total} graded
                         </span>
+                        <span className="tnum text-xs font-semibold text-ink">
+                            {rate}%
+                        </span>
                     </div>
+                    <Progress value={rate} tone={allDone ? "success" : "accent"} />
                 </div>
 
-                <div className="flex items-center gap-4 lg:w-64 lg:shrink-0">
-                    <div className="hidden flex-1 sm:block">
-                        <div className="mb-1 flex items-center justify-between text-[11px]">
-                            <span className="text-ink-muted">Progress</span>
-                            <span className="font-semibold tabular-nums text-ink">
-                                {rate}%
-                            </span>
-                        </div>
-                        <Progress
-                            value={rate}
-                            tone={allDone ? "success" : "accent"}
-                        />
-                    </div>
-
-                    <Link to={`/admin/grading/${row.assignment_id}`}>
-                        <button className="inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-xs font-medium text-white shadow-xs transition-all hover:bg-accent-hover active:scale-[0.98]">
-                            Grade →
-                        </button>
-                    </Link>
-                </div>
+                <Link to={`/admin/grading/${row.assignment_id}`}>
+                    <Button variant="accent" size="sm">
+                        Grade →
+                    </Button>
+                </Link>
             </div>
         </Card>
     );

@@ -61,6 +61,11 @@ const AdminAssignments = () => {
         setSearchParams(searchParams);
     };
 
+    const openNew = () => {
+        setEditing(null);
+        setFormOpen(true);
+    };
+
     return (
         <>
             <PageHeader
@@ -76,27 +81,23 @@ const AdminAssignments = () => {
                         : "Post work, share the submission link, and track confirmations."
                 }
                 action={
-                    <Button
-                        variant="accent"
-                        onClick={() => {
-                            setEditing(null);
-                            setFormOpen(true);
-                        }}
-                    >
+                    <Button variant="accent" onClick={openNew}>
                         New assignment
                     </Button>
                 }
             />
 
             {activeCourse && (
-                <div className="mb-5 flex items-center gap-3 rounded-md border border-accent/20 bg-accent-soft/40 px-4 py-2.5">
-                    <span className="text-xs font-medium text-accent">
+                <div className="mb-6 flex items-center gap-3 border-l-4 border-l-accent bg-accent-soft px-4 py-3">
+                    <span className="text-xs text-accent-ink">
                         Showing assignments for{" "}
-                        <strong>{activeCourse.code}</strong>
+                        <strong className="font-semibold">
+                            {activeCourse.code}
+                        </strong>
                     </span>
                     <button
                         onClick={clearFilter}
-                        className="ml-auto text-xs font-medium text-accent underline hover:no-underline"
+                        className="ml-auto text-xs font-semibold text-accent-ink underline decoration-2 underline-offset-4 hover:text-accent"
                     >
                         Clear filter
                     </button>
@@ -119,10 +120,7 @@ const AdminAssignments = () => {
                             : "Create your first assignment and send it to the cohort, a group, or a single student."
                     }
                     action={
-                        <Button
-                            variant="accent"
-                            onClick={() => setFormOpen(true)}
-                        >
+                        <Button variant="accent" onClick={openNew}>
                             New assignment
                         </Button>
                     }
@@ -130,9 +128,10 @@ const AdminAssignments = () => {
             )}
 
             {!loading && !error && visible.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                     {visible.map((assignment) => {
                         const due = dueLabel(assignment.due_date);
+                        const isGroup = assignment.submission_type === "group";
                         const linkedCourse = assignment.course_id
                             ? courses.find(
                                   (c) =>
@@ -142,79 +141,82 @@ const AdminAssignments = () => {
                             : null;
 
                         return (
-                            <Card key={assignment.id} hover className="px-5 py-5">
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h3 className="font-display text-base font-bold tracking-tight text-ink">
-                                                {assignment.title}
-                                            </h3>
-                                            {linkedCourse && (
-                                                <Badge tone="accent">
-                                                    {linkedCourse.code}
-                                                </Badge>
-                                            )}
-                                            <Badge
-                                                tone={
-                                                    assignment.is_global
-                                                        ? "accent"
-                                                        : "neutral"
-                                                }
-                                            >
-                                                {assignment.is_global
-                                                    ? "Whole cohort"
-                                                    : "Targeted"}
+                            <Card
+                                key={assignment.id}
+                                hover
+                                className={`flex flex-col gap-6 border-l-4 px-6 py-6 lg:flex-row lg:items-start lg:justify-between ${
+                                    isGroup ? "border-l-ink" : "border-l-accent"
+                                }`}
+                            >
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {linkedCourse && (
+                                            <Badge tone="accent">
+                                                {linkedCourse.code}
                                             </Badge>
-                                            <Badge tone="neutral">
-                                                {assignment.submission_type ===
-                                                "group"
-                                                    ? "Group"
-                                                    : "Individual"}
-                                            </Badge>
-                                            <Badge tone={due.tone}>
-                                                {due.text}
-                                            </Badge>
-                                        </div>
-
-                                        {assignment.description && (
-                                            <p className="mt-2 max-w-prose text-sm text-ink-soft">
-                                                {assignment.description}
-                                            </p>
                                         )}
-
-                                        <p className="mt-3 text-xs text-ink-faint">
-                                            Due {formatDate(assignment.due_date)}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2 lg:shrink-0">
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => {
-                                                setEditing(assignment);
-                                                setFormOpen(true);
-                                            }}
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() =>
-                                                setAssigning(assignment)
+                                        <Badge
+                                            tone={
+                                                assignment.is_global
+                                                    ? "accent"
+                                                    : "neutral"
                                             }
                                         >
-                                            Assign
-                                        </Button>
-                                        <Link
-                                            to={`/admin/assignments/${assignment.id}`}
-                                        >
-                                            <Button variant="accent" size="sm">
-                                                Progress
-                                            </Button>
-                                        </Link>
+                                            {assignment.is_global
+                                                ? "Whole cohort"
+                                                : "Targeted"}
+                                        </Badge>
+                                        <Badge tone="neutral">
+                                            {isGroup ? "Group" : "Individual"}
+                                        </Badge>
+                                        <Badge tone={due.tone}>{due.text}</Badge>
                                     </div>
+
+                                    <h3 className="mt-3 text-xl font-extrabold tracking-tight text-ink">
+                                        {assignment.title}
+                                    </h3>
+
+                                    {assignment.description && (
+                                        <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
+                                            {assignment.description}
+                                        </p>
+                                    )}
+
+                                    <p className="micro mt-4">
+                                        Due{" "}
+                                        <span className="text-ink">
+                                            {formatDate(assignment.due_date)}
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 lg:w-48 lg:shrink-0 lg:flex-col lg:items-stretch">
+                                    <Link to={`/admin/assignments/${assignment.id}`}>
+                                        <Button
+                                            variant="accent"
+                                            size="sm"
+                                            className="w-full"
+                                        >
+                                            View progress
+                                        </Button>
+                                    </Link>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setAssigning(assignment)}
+                                    >
+                                        Assign
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setEditing(assignment);
+                                            setFormOpen(true);
+                                        }}
+                                    >
+                                        Edit
+                                    </Button>
                                 </div>
                             </Card>
                         );

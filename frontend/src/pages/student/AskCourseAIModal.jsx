@@ -48,10 +48,7 @@ const AskCourseAIModal = ({ course, onClose }) => {
         setError("");
         setInput("");
 
-        setMessages((prev) => [
-            ...prev,
-            { role: "user", content: question }
-        ]);
+        setMessages((prev) => [...prev, { role: "user", content: question }]);
         setLoading(true);
 
         try {
@@ -107,7 +104,7 @@ const AskCourseAIModal = ({ course, onClose }) => {
             <div className="flex flex-col gap-3">
                 <div
                     ref={scrollRef}
-                    className="h-72 space-y-3 overflow-y-auto rounded-lg border border-line bg-canvas px-4 py-4"
+                    className="scroll-thin h-72 space-y-3 overflow-y-auto rounded-lg border border-line bg-canvas px-4 py-4"
                 >
                     {messages.map((message, index) => (
                         <MessageRow key={index} message={message} />
@@ -115,28 +112,21 @@ const AskCourseAIModal = ({ course, onClose }) => {
 
                     {loading && (
                         <div className="flex justify-start">
-                            <div className="rounded-2xl rounded-tl-sm bg-surface px-4 py-2.5 shadow-xs">
-                                <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
-                                    <span className="flex gap-1">
-                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted" />
-                                        <span
-                                            className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
-                                            style={{ animationDelay: "150ms" }}
-                                        />
-                                        <span
-                                            className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
-                                            style={{ animationDelay: "300ms" }}
-                                        />
-                                    </span>
-                                    Thinking
-                                </span>
+                            <div className="flex gap-1 rounded-lg rounded-tl-none border border-line bg-surface px-4 py-3">
+                                {[0, 1, 2].map((i) => (
+                                    <span
+                                        key={i}
+                                        className="h-1.5 w-1.5 animate-pulse-soft bg-accent"
+                                        style={{ animationDelay: `${i * 160}ms` }}
+                                    />
+                                ))}
                             </div>
                         </div>
                     )}
                 </div>
 
                 {error && (
-                    <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">
+                    <p className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
                         {error}
                     </p>
                 )}
@@ -150,20 +140,20 @@ const AskCourseAIModal = ({ course, onClose }) => {
                         onKeyDown={onKeyDown}
                         placeholder="Ask about the professor, assignments, or course…"
                         disabled={loading}
-                        className="flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2.5 text-sm leading-5 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:bg-line-soft"
+                        className="field flex-1 resize-none leading-5"
                         style={{ height: "42px", maxHeight: "120px" }}
                     />
                     <Button
                         variant="accent"
                         onClick={send}
                         disabled={!input.trim() || loading}
-                        className="h-10.5 shrink-0"
+                        className="shrink-0"
                     >
                         Send
                     </Button>
                 </div>
 
-                <p className="text-[10px] text-ink-faint">
+                <p className="micro text-[10px]">
                     Enter to send · Shift + Enter for a new line
                 </p>
             </div>
@@ -177,7 +167,7 @@ const MessageRow = ({ message }) => {
     if (isUser) {
         return (
             <div className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-ink px-4 py-2.5 text-sm leading-relaxed text-white shadow-xs">
+                <div className="max-w-[85%] rounded-lg rounded-tr-none bg-ink px-4 py-2.5 text-sm leading-relaxed text-canvas">
                     {message.content}
                 </div>
             </div>
@@ -191,17 +181,17 @@ const MessageRow = ({ message }) => {
 
     return (
         <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-surface px-4 py-3 shadow-xs">
+            <div className="max-w-[85%] rounded-lg rounded-tl-none border border-line bg-surface px-4 py-3">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
                     {message.content}
                 </p>
 
                 {hasSources && (
-                    <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-line-soft pt-2.5">
+                    <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-2.5">
                         {message.sources.map((source, i) => (
                             <span
                                 key={i}
-                                className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent"
+                                className="rounded-sm border border-accent/30 bg-accent-soft px-1.5 py-0.5 font-mono text-[10px] font-medium text-accent-ink"
                             >
                                 {source.title}
                             </span>

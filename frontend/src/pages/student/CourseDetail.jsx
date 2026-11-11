@@ -88,7 +88,7 @@ const CourseDetail = () => {
         <>
             <Link
                 to="/student"
-                className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                className="micro mb-6 inline-flex items-center gap-1 transition-colors hover:text-accent"
             >
                 ← Back to dashboard
             </Link>
@@ -113,16 +113,17 @@ const CourseDetail = () => {
             />
 
             {course.description && (
-                <Card className="mb-6 px-6 py-5">
+                <Card className="mb-10 border-l-4 border-l-ink px-6 py-5">
                     <p className="max-w-prose text-sm leading-relaxed text-ink-soft">
                         {course.description}
                     </p>
                 </Card>
             )}
 
-            <h2 className="mb-3 font-display text-base font-bold tracking-tight text-ink">
-                Assignments
-            </h2>
+            <div className="mb-5 flex items-end justify-between border-b border-ink pb-3">
+                <h2 className="text-2xl text-ink">Assignments</h2>
+                <span className="micro">{assignments.length} total</span>
+            </div>
 
             {assignments.length === 0 ? (
                 <EmptyState
@@ -130,7 +131,7 @@ const CourseDetail = () => {
                     description="Your professor hasn't posted anything to this course yet."
                 />
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {assignments.map((assignment) => (
                         <AssignmentCard
                             key={assignment.id}

@@ -31,28 +31,31 @@ const AssignmentCard = ({ assignment, onConfirm, onAskAI }) => {
 
     return (
         <Card
-            className={`flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-start sm:justify-between ${
+            hover
+            className={`flex flex-col gap-6 px-6 py-6 sm:flex-row sm:items-start sm:justify-between ${
                 submitted
                     ? ""
                     : isGroup
-                      ? "border-l-2 border-l-violet-500"
-                      : "border-l-2 border-l-accent"
+                      ? "border-l-4 border-l-ink"
+                      : "border-l-4 border-l-accent"
             }`}
         >
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-base font-bold tracking-tight text-ink">
-                        {assignment.title}
-                    </h3>
                     {assignment.is_global && (
                         <Badge tone="accent">Whole cohort</Badge>
                     )}
-                    {isGroup ? (
-                        <Badge tone="neutral">Group</Badge>
-                    ) : (
-                        <Badge tone="neutral">Individual</Badge>
-                    )}
+                    <Badge tone="neutral">
+                        {isGroup ? "Group" : "Individual"}
+                    </Badge>
+                    <Badge tone={submitted ? "success" : due.tone}>
+                        {submitted ? "Confirmed" : due.text}
+                    </Badge>
                 </div>
+
+                <h3 className="mt-3 text-xl font-extrabold tracking-tight text-ink">
+                    {assignment.title}
+                </h3>
 
                 {assignment.description && (
                     <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
@@ -60,40 +63,18 @@ const AssignmentCard = ({ assignment, onConfirm, onAskAI }) => {
                     </p>
                 )}
 
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                    <span>Due {formatDate(assignment.due_date)}</span>
-                    <span className="text-ink-faint">·</span>
-                    <Badge tone={submitted ? "success" : due.tone}>
-                        {submitted ? "Confirmed" : due.text}
-                    </Badge>
-                </div>
+                <p className="micro mt-4">
+                    Due <span className="text-ink">{formatDate(assignment.due_date)}</span>
+                </p>
 
                 {helperText && !submitted && (
-                    <div className="mt-3 flex items-start gap-2 rounded-md bg-canvas px-3 py-2">
-                        <span className="mt-0.5 shrink-0 text-ink-faint">
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="16" x2="12" y2="12" />
-                                <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                        </span>
-                        <p className="text-xs leading-relaxed text-ink-soft">
-                            {helperText}
-                        </p>
-                    </div>
+                    <p className="mt-4 border-l-2 border-ink bg-canvas px-3 py-2 text-xs leading-relaxed text-ink-soft">
+                        {helperText}
+                    </p>
                 )}
             </div>
 
-            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:w-52">
+            <div className="flex shrink-0 flex-col items-stretch gap-2.5 sm:w-48">
                 <Button
                     variant="secondary"
                     size="sm"
@@ -109,7 +90,7 @@ const AssignmentCard = ({ assignment, onConfirm, onAskAI }) => {
                 </Button>
 
                 {submitted ? (
-                    <Badge tone="success" className="justify-center py-1.5">
+                    <Badge tone="success" className="justify-center py-2">
                         ✓ Submitted
                     </Badge>
                 ) : canConfirm ? (

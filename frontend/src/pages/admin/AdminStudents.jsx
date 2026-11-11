@@ -45,13 +45,18 @@ const AdminStudents = () => {
                 subtitle="Everyone registered on the platform."
             />
 
-            <div className="mb-5 max-w-sm">
-                <input
-                    className="field"
-                    placeholder="Search by name or email..."
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                />
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+                <div className="w-full max-w-sm">
+                    <input
+                        className="field"
+                        placeholder="Search by name or email..."
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                    />
+                </div>
+                <span className="micro">
+                    {visible.length} of {students.length}
+                </span>
             </div>
 
             {loading && <Spinner label="Loading students" />}
@@ -68,38 +73,38 @@ const AdminStudents = () => {
                 <Card className="overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-120 text-left text-sm">
-                            <thead className="border-b border-line bg-canvas text-xs text-ink-muted">
+                            <thead className="border-b border-ink bg-canvas">
                                 <tr>
-                                    <th className="px-5 py-3 font-medium">Student</th>
-                                    <th className="px-5 py-3 font-medium">ID</th>
-                                    <th className="px-5 py-3 font-medium">Joined</th>
+                                    <th className="micro px-5 py-3 font-medium">Student</th>
+                                    <th className="micro px-5 py-3 font-medium">ID</th>
+                                    <th className="micro px-5 py-3 font-medium">Joined</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {visible.map((student) => (
                                     <tr
                                         key={student.id}
-                                        className="border-b border-line last:border-0"
+                                        className="border-b border-line transition-colors last:border-0 hover:bg-canvas"
                                     >
                                         <td className="px-5 py-3">
                                             <div className="flex items-center gap-3">
-                                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-canvas text-xs font-semibold text-ink-soft">
+                                                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-surface text-[11px] font-bold text-ink-soft">
                                                     {initials(student.name)}
                                                 </span>
-                                                <div>
-                                                    <p className="font-medium text-ink">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-semibold text-ink">
                                                         {student.name}
                                                     </p>
-                                                    <p className="text-xs text-ink-muted">
+                                                    <p className="truncate text-[11px] text-ink-muted">
                                                         {student.email}
                                                     </p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-3 font-sans tabular-nums text-ink-soft">
+                                        <td className="tnum px-5 py-3 text-ink-soft">
                                             {student.id}
                                         </td>
-                                        <td className="px-5 py-3 text-xs text-ink-muted">
+                                        <td className="micro px-5 py-3 normal-case">
                                             {formatDate(student.created_at)}
                                         </td>
                                     </tr>

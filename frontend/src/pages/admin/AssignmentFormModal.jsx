@@ -17,6 +17,26 @@ const emptyForm = {
     max_score: 100
 };
 
+const typeOptions = [
+    {
+        value: "individual",
+        label: "Individual",
+        hint: "Each student confirms their own work"
+    },
+    {
+        value: "group",
+        label: "Group",
+        hint: "Only the group leader confirms"
+    }
+];
+
+const choiceClass = (active) =>
+    `rounded-md border px-3 py-2.5 text-left transition-all ${
+        active
+            ? "border-ink bg-accent-soft shadow-[3px_3px_0_0_var(--color-accent)]"
+            : "border-line bg-surface hover:border-ink"
+    }`;
+
 const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
     const { push } = useToast();
     const [form, setForm] = useState(emptyForm);
@@ -119,7 +139,7 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                 </>
             }
         >
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <div>
                     <label className="label" htmlFor="title">
                         Title
@@ -149,7 +169,7 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                     />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr]">
                     <div>
                         <label className="label" htmlFor="due_date">
                             Due date
@@ -175,25 +195,25 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                             type="number"
                             min="1"
                             step="1"
-                            className="field"
+                            className="field tnum"
                             value={form.max_score}
                             onChange={change}
                         />
                     </div>
+                </div>
 
-                    <div>
-                        <label className="label" htmlFor="onedrive_link">
-                            OneDrive link
-                        </label>
-                        <input
-                            id="onedrive_link"
-                            name="onedrive_link"
-                            className="field"
-                            placeholder="https://..."
-                            value={form.onedrive_link}
-                            onChange={change}
-                        />
-                    </div>
+                <div>
+                    <label className="label" htmlFor="onedrive_link">
+                        OneDrive link
+                    </label>
+                    <input
+                        id="onedrive_link"
+                        name="onedrive_link"
+                        className="field font-mono text-xs"
+                        placeholder="https://..."
+                        value={form.onedrive_link}
+                        onChange={change}
+                    />
                 </div>
 
                 <div>
@@ -215,32 +235,18 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                         ))}
                     </select>
                     {courses.length === 0 && (
-                        <p className="mt-1.5 text-xs text-ink-faint">
+                        <p className="mt-1.5 text-xs text-ink-muted">
                             You haven't created any courses yet.
                         </p>
                     )}
                 </div>
 
-                <fieldset className="rounded-lg border border-line p-4">
-                    <legend className="px-2 text-xs font-medium uppercase tracking-wider text-ink-muted">
-                        Submission type
-                    </legend>
+                <fieldset>
+                    <legend className="label">Submission type</legend>
 
                     <div className="grid grid-cols-2 gap-2">
-                        {[
-                            {
-                                value: "individual",
-                                label: "Individual",
-                                hint: "Each student confirms their own work"
-                            },
-                            {
-                                value: "group",
-                                label: "Group",
-                                hint: "Only the group leader confirms"
-                            }
-                        ].map((option) => {
-                            const active =
-                                form.submission_type === option.value;
+                        {typeOptions.map((option) => {
+                            const active = form.submission_type === option.value;
 
                             return (
                                 <button
@@ -252,17 +258,9 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                                             submission_type: option.value
                                         }))
                                     }
-                                    className={`rounded-md border px-3 py-2.5 text-left transition-all ${
-                                        active
-                                            ? "border-accent bg-accent-soft/40"
-                                            : "border-line hover:border-ink-faint"
-                                    }`}
+                                    className={choiceClass(active)}
                                 >
-                                    <span
-                                        className={`block text-sm font-medium ${
-                                            active ? "text-accent" : "text-ink"
-                                        }`}
-                                    >
+                                    <span className="block text-sm font-semibold text-ink">
                                         {option.label}
                                     </span>
                                     <span className="mt-0.5 block text-xs text-ink-muted">
@@ -274,62 +272,59 @@ const AssignmentFormModal = ({ open, assignment, onClose, onSaved }) => {
                     </div>
                 </fieldset>
 
-                <fieldset className="rounded-lg border border-line p-4">
-                    <legend className="px-2 text-xs font-medium uppercase tracking-wider text-ink-muted">
-                        Who gets this
-                    </legend>
+                <fieldset>
+                    <legend className="label">Who gets this</legend>
 
-                    <div className="space-y-1">
-                        <label className="flex cursor-pointer items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-canvas">
-                            <input
-                                type="radio"
-                                name="scope"
-                                className="mt-1 accent-accent"
-                                checked={form.is_global}
-                                onChange={() =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        is_global: true
-                                    }))
-                                }
-                            />
-                            <span className="text-sm">
-                                <span className="font-medium text-ink">
-                                    Every student
-                                </span>
-                                <span className="mt-0.5 block text-xs text-ink-muted">
-                                    Visible to the whole cohort immediately.
-                                </span>
-                            </span>
-                        </label>
+                    <div className="grid gap-2">
+                        {[
+                            {
+                                global: true,
+                                label: "Every student",
+                                hint: "Visible to the whole cohort immediately."
+                            },
+                            {
+                                global: false,
+                                label: "Specific groups or students",
+                                hint: 'Pick them with "Assign" after saving.'
+                            }
+                        ].map((option) => {
+                            const active = form.is_global === option.global;
 
-                        <label className="flex cursor-pointer items-start gap-3 rounded-md p-2.5 transition-colors hover:bg-canvas">
-                            <input
-                                type="radio"
-                                name="scope"
-                                className="mt-1 accent-accent"
-                                checked={!form.is_global}
-                                onChange={() =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        is_global: false
-                                    }))
-                                }
-                            />
-                            <span className="text-sm">
-                                <span className="font-medium text-ink">
-                                    Specific groups or students
-                                </span>
-                                <span className="mt-0.5 block text-xs text-ink-muted">
-                                    Pick them with "Assign" after saving.
-                                </span>
-                            </span>
-                        </label>
+                            return (
+                                <label
+                                    key={option.label}
+                                    className={`flex cursor-pointer items-start gap-3 ${choiceClass(
+                                        active
+                                    )}`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="scope"
+                                        className="mt-1 accent-accent"
+                                        checked={active}
+                                        onChange={() =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                is_global: option.global
+                                            }))
+                                        }
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-ink">
+                                            {option.label}
+                                        </span>
+                                        <span className="mt-0.5 block text-xs text-ink-muted">
+                                            {option.hint}
+                                        </span>
+                                    </span>
+                                </label>
+                            );
+                        })}
                     </div>
                 </fieldset>
 
                 {error && (
-                    <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                    <p className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
                         {error}
                     </p>
                 )}

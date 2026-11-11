@@ -10,6 +10,15 @@ import Card from "../../components/ui/Card.jsx";
 import { EmptyState, ErrorState, Spinner } from "../../components/ui/States.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 
+const hasValue = (v) => v !== null && v !== undefined;
+
+const validateScore = (raw, max) => {
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || raw === "") return { error: "Enter a score." };
+    if (numeric < 0 || numeric > max) return { error: `Must be 0 – ${max}.` };
+    return { value: numeric };
+};
+
 const GradeAssignment = () => {
     const { assignmentId } = useParams();
     const { push } = useToast();
@@ -22,9 +31,7 @@ const GradeAssignment = () => {
         setLoading(true);
         setError("");
         try {
-            const { data } = await gradingApi.assignmentSubmissions(
-                assignmentId
-            );
+            const { data } = await gradingApi.assignmentSubmissions(assignmentId);
             setData(data);
         } catch (err) {
             setError(readError(err, "Could not load submissions."));
@@ -47,37 +54,37 @@ const GradeAssignment = () => {
         <>
             <Link
                 to="/admin/grading"
-                className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                className="micro mb-6 inline-flex items-center gap-1 transition-colors hover:text-accent"
             >
                 ← Back to grading
             </Link>
 
-        <PageHeader
-    eyebrow={`Max ${assignment.max_score} marks`}
-    title={assignment.title}
-    subtitle={
-        assignment.submission_type === "group"
-            ? "Grade the group as a whole, then override individual members if needed."
-            : "Enter a score and optional feedback for each student."
-    }
-    action={
-        assignment.onedrive_link && (
-            <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                    window.open(
-                        assignment.onedrive_link,
-                        "_blank",
-                        "noopener,noreferrer"
+            <PageHeader
+                eyebrow={`Max ${assignment.max_score} marks`}
+                title={assignment.title}
+                subtitle={
+                    assignment.submission_type === "group"
+                        ? "Grade the group as a whole, then override individual members if needed."
+                        : "Enter a score and optional feedback for each student."
+                }
+                action={
+                    assignment.onedrive_link && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                                window.open(
+                                    assignment.onedrive_link,
+                                    "_blank",
+                                    "noopener,noreferrer"
+                                )
+                            }
+                        >
+                            Open submission folder
+                        </Button>
                     )
                 }
-            >
-                Open submission folder
-            </Button>
-        )
-    }
-/>
+            />
 
             {assignment.submission_type === "group" ? (
                 <GroupGrading
@@ -98,9 +105,7 @@ const GradeAssignment = () => {
     );
 };
 
-/* ------------------------------------------------------------------ */
-/*  INDIVIDUAL                                                         */
-/* ------------------------------------------------------------------ */
+/* ------------------------------ INDIVIDUAL ------------------------------ */
 
 const IndividualGrading = ({ assignment, students, onSaved, push }) => {
     if (students.length === 0) {
@@ -112,25 +117,23 @@ const IndividualGrading = ({ assignment, students, onSaved, push }) => {
         );
     }
 
-    const gradedCount = students.filter(
-        (s) => s.score !== null && s.score !== undefined
-    ).length;
+    const gradedCount = students.filter((s) => hasValue(s.score)).length;
 
     return (
-        <>
-            <div className="mb-4 flex items-center gap-2 text-xs text-ink-muted">
-                <span className="font-medium text-ink">
-                    {gradedCount} of {students.length}
+        <section>
+            <div className="mb-5 flex items-end justify-between border-b border-ink pb-3">
+                <h2 className="text-2xl text-ink">Students</h2>
+                <span className="micro">
+                    {gradedCount} of {students.length} graded
                 </span>
-                <span>graded</span>
             </div>
 
             <Card className="overflow-hidden">
-                <div className="hidden border-b border-line bg-canvas px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-ink-muted sm:grid sm:grid-cols-[1fr_120px_1fr_auto] sm:gap-4">
+                <div className="micro hidden border-b border-ink bg-canvas px-5 py-3 sm:grid sm:grid-cols-[1fr_120px_1fr_auto] sm:gap-4">
                     <div>Student</div>
                     <div>Score</div>
                     <div>Feedback</div>
-                    <div></div>
+                    <div className="w-20" />
                 </div>
 
                 <div className="divide-y divide-line">
@@ -145,32 +148,26 @@ const IndividualGrading = ({ assignment, students, onSaved, push }) => {
                     ))}
                 </div>
             </Card>
-        </>
+        </section>
     );
 };
 
 const IndividualRow = ({ assignment, student, onSaved, push }) => {
     const [score, setScore] = useState(
-        student.score !== null && student.score !== undefined
-            ? String(student.score)
-            : ""
+        hasValue(student.score) ? String(student.score) : ""
     );
     const [feedback, setFeedback] = useState(student.feedback ?? "");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
     const canGrade = Boolean(student.submission_id);
-    const graded = student.score !== null && student.score !== undefined;
+    const graded = hasValue(student.score);
 
     const save = async () => {
         setError("");
-        const numeric = Number(score);
-        if (!Number.isFinite(numeric) || score === "") {
-            setError("Enter a score.");
-            return;
-        }
-        if (numeric < 0 || numeric > assignment.max_score) {
-            setError(`Must be 0 – ${assignment.max_score}.`);
+        const result = validateScore(score, assignment.max_score);
+        if (result.error) {
+            setError(result.error);
             return;
         }
 
@@ -178,7 +175,7 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
         try {
             await gradingApi.saveIndividual({
                 submissionId: student.submission_id,
-                score: numeric,
+                score: result.value,
                 feedback: feedback.trim()
             });
             push(`Graded ${student.student_name}`);
@@ -192,16 +189,16 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
 
     return (
         <div className="px-5 py-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-start sm:gap-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-center sm:gap-4">
                 <div className="flex items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-canvas text-xs font-semibold text-ink-soft">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-surface text-[11px] font-bold text-ink-soft">
                         {initials(student.student_name)}
                     </span>
                     <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-ink">
+                        <p className="truncate text-sm font-semibold text-ink">
                             {student.student_name}
                         </p>
-                        <p className="truncate text-xs text-ink-muted">
+                        <p className="truncate text-[11px] text-ink-muted">
                             {student.student_email}
                         </p>
                     </div>
@@ -213,10 +210,7 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
                 </div>
 
                 <div>
-                    {!canGrade && (
-                        <p className="text-xs text-ink-faint">Not submitted</p>
-                    )}
-                    {canGrade && (
+                    {canGrade ? (
                         <input
                             type="number"
                             min="0"
@@ -225,8 +219,10 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
                             value={score}
                             onChange={(e) => setScore(e.target.value)}
                             placeholder="0"
-                            className="field h-9 w-full tabular-nums"
+                            className="field tnum h-9 w-full py-0"
                         />
+                    ) : (
+                        <Badge tone="neutral">Not submitted</Badge>
                     )}
                 </div>
 
@@ -237,12 +233,12 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             placeholder="Optional feedback"
-                            className="field h-9 w-full"
+                            className="field h-9 w-full py-0"
                         />
                     )}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex w-full justify-end sm:w-20">
                     {canGrade && (
                         <Button
                             variant={graded ? "secondary" : "accent"}
@@ -257,15 +253,13 @@ const IndividualRow = ({ assignment, student, onSaved, push }) => {
             </div>
 
             {error && (
-                <p className="mt-2 text-xs text-danger">{error}</p>
+                <p className="mt-2 font-mono text-[11px] text-danger">{error}</p>
             )}
         </div>
     );
 };
 
-/* ------------------------------------------------------------------ */
-/*  GROUP                                                              */
-/* ------------------------------------------------------------------ */
+/* -------------------------------- GROUP --------------------------------- */
 
 const GroupGrading = ({ assignment, groups, onSaved, push }) => {
     if (groups.length === 0) {
@@ -278,7 +272,7 @@ const GroupGrading = ({ assignment, groups, onSaved, push }) => {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {groups.map((g) => (
                 <GroupGradeCard
                     key={g.group_id}
@@ -294,9 +288,7 @@ const GroupGrading = ({ assignment, groups, onSaved, push }) => {
 
 const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
     const [commonScore, setCommonScore] = useState(
-        group.common_score !== null && group.common_score !== undefined
-            ? String(group.common_score)
-            : ""
+        hasValue(group.common_score) ? String(group.common_score) : ""
     );
     const [commonFeedback, setCommonFeedback] = useState(
         group.common_feedback ?? ""
@@ -305,22 +297,16 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
     const [error, setError] = useState("");
 
     const canGrade = Boolean(group.submission_id);
-    const hasCommon =
-        group.common_score !== null && group.common_score !== undefined;
-    const overrideCount = group.members.filter(
-        (m) =>
-            m.override_score !== null && m.override_score !== undefined
+    const hasCommon = hasValue(group.common_score);
+    const overrideCount = group.members.filter((m) =>
+        hasValue(m.override_score)
     ).length;
 
     const saveCommon = async () => {
         setError("");
-        const numeric = Number(commonScore);
-        if (!Number.isFinite(numeric) || commonScore === "") {
-            setError("Enter a score.");
-            return;
-        }
-        if (numeric < 0 || numeric > assignment.max_score) {
-            setError(`Must be 0 – ${assignment.max_score}.`);
+        const result = validateScore(commonScore, assignment.max_score);
+        if (result.error) {
+            setError(result.error);
             return;
         }
 
@@ -329,7 +315,7 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
             await gradingApi.saveGroupCommon({
                 groupId: group.group_id,
                 submissionId: group.submission_id,
-                score: numeric,
+                score: result.value,
                 feedback: commonFeedback.trim()
             });
             push("Group grade saved");
@@ -342,39 +328,30 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
     };
 
     return (
-        <Card>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-base font-bold tracking-tight text-ink">
-                        {group.group_name}
-                    </h3>
-                    <Badge tone="neutral">
-                        {group.members.length} members
+        <Card className="overflow-hidden border-l-4 border-l-ink">
+            <div className="flex flex-wrap items-center gap-2 border-b border-line px-6 py-5">
+                <h3 className="mr-1 text-xl text-ink">{group.group_name}</h3>
+                <Badge tone="neutral">{group.members.length} members</Badge>
+                {!canGrade && <Badge tone="warn">Not submitted</Badge>}
+                {hasCommon && <Badge tone="accent">Group graded</Badge>}
+                {overrideCount > 0 && (
+                    <Badge tone="warn">
+                        {overrideCount} override{overrideCount > 1 ? "s" : ""}
                     </Badge>
-                    {!canGrade && <Badge tone="warn">Not submitted</Badge>}
-                    {hasCommon && <Badge tone="accent">Group graded</Badge>}
-                    {overrideCount > 0 && (
-                        <Badge tone="warn">
-                            {overrideCount} override{overrideCount > 1 ? "s" : ""}
-                        </Badge>
-                    )}
-                </div>
+                )}
             </div>
 
-            {/* Common grade block */}
-            <div className="border-b border-line bg-canvas/40 px-5 py-5">
-                <div className="mb-3 flex items-center gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                        Common group grade
-                    </p>
-                    <span className="text-[10px] text-ink-faint">
+            <div className="border-b border-line bg-canvas/60 px-6 py-5">
+                <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
+                    <p className="micro text-ink">Common group grade</p>
+                    <span className="text-[11px] text-ink-muted">
                         Applied to all members unless overridden
                     </span>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-3">
                     <div>
-                        <label className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        <label className="micro mb-1.5 block">
                             Score / {assignment.max_score}
                         </label>
                         <input
@@ -386,11 +363,11 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
                             onChange={(e) => setCommonScore(e.target.value)}
                             disabled={!canGrade}
                             placeholder="0"
-                            className="field h-10 w-28 tabular-nums"
+                            className="field tnum h-10 w-28 py-0"
                         />
                     </div>
                     <div className="min-w-60 flex-1">
-                        <label className="mb-1 block text-[11px] font-medium text-ink-muted">
+                        <label className="micro mb-1.5 block">
                             Feedback (visible to all members)
                         </label>
                         <input
@@ -399,7 +376,7 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
                             onChange={(e) => setCommonFeedback(e.target.value)}
                             placeholder="Optional"
                             disabled={!canGrade}
-                            className="field h-10 w-full"
+                            className="field h-10 w-full py-0"
                         />
                     </div>
                     <Button
@@ -413,17 +390,14 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
                 </div>
 
                 {error && (
-                    <p className="mt-2 text-xs text-danger">{error}</p>
+                    <p className="mt-3 font-mono text-[11px] text-danger">{error}</p>
                 )}
             </div>
 
-            {/* Members list */}
-            <div className="px-5 py-4">
-                <div className="mb-3 flex items-center justify-between">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                        Members
-                    </p>
-                    <p className="text-[11px] text-ink-faint">
+            <div className="px-6 py-5">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="micro text-ink">Members</p>
+                    <p className="text-[11px] text-ink-muted">
                         Override a member to give them a different grade
                     </p>
                 </div>
@@ -446,8 +420,7 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
 };
 
 const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
-    const hasOverride =
-        member.override_score !== null && member.override_score !== undefined;
+    const hasOverride = hasValue(member.override_score);
 
     const [editing, setEditing] = useState(false);
     const [score, setScore] = useState(
@@ -458,20 +431,13 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
     const [error, setError] = useState("");
 
     const canGrade = Boolean(group.submission_id);
-
-    const effective = hasOverride
-        ? member.override_score
-        : group.common_score;
+    const effective = hasOverride ? member.override_score : group.common_score;
 
     const save = async () => {
         setError("");
-        const numeric = Number(score);
-        if (!Number.isFinite(numeric) || score === "") {
-            setError("Enter a score.");
-            return;
-        }
-        if (numeric < 0 || numeric > assignment.max_score) {
-            setError(`Must be 0 – ${assignment.max_score}.`);
+        const result = validateScore(score, assignment.max_score);
+        if (result.error) {
+            setError(result.error);
             return;
         }
 
@@ -481,7 +447,7 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                 groupId: group.group_id,
                 studentId: member.id,
                 submissionId: group.submission_id,
-                score: numeric,
+                score: result.value,
                 feedback: feedback.trim()
             });
             push("Override saved");
@@ -509,27 +475,23 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
 
     return (
         <div
-            className={`rounded-lg border px-3 py-3 transition-colors ${
+            className={`rounded-md border px-3 py-3 ${
                 hasOverride
-                    ? "border-warn/30 bg-warn-soft/30"
-                    : "border-line bg-canvas/40"
+                    ? "border-warn/40 bg-warn-soft/40"
+                    : "border-line bg-surface"
             }`}
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-[10px] font-semibold text-ink-soft">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-[11px] font-bold text-ink-soft">
                         {initials(member.name)}
                     </span>
                     <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="truncate text-sm font-medium text-ink">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-ink">
                                 {member.name}
                             </p>
-                            {hasOverride && (
-                                <span className="rounded-full bg-warn/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-warn">
-                                    Override
-                                </span>
-                            )}
+                            {hasOverride && <Badge tone="warn">Override</Badge>}
                         </div>
                         <p className="truncate text-[11px] text-ink-muted">
                             {member.email}
@@ -537,16 +499,12 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="text-right">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-ink-muted">
-                            Effective
-                        </p>
-                        <p className="font-display text-base font-bold tabular-nums text-ink">
-                            {effective !== null && effective !== undefined
-                                ? `${Number(effective)}`
-                                : "—"}
-                            <span className="text-xs font-medium text-ink-muted">
+                        <p className="micro text-[10px]">Effective</p>
+                        <p className="tnum text-xl font-semibold text-ink">
+                            {hasValue(effective) ? Number(effective) : "—"}
+                            <span className="text-xs text-ink-faint">
                                 {" "}
                                 / {assignment.max_score}
                             </span>
@@ -566,9 +524,7 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                                                 ? String(member.override_score)
                                                 : ""
                                         );
-                                        setFeedback(
-                                            member.override_feedback ?? ""
-                                        );
+                                        setFeedback(member.override_feedback ?? "");
                                         setError("");
                                     }}
                                 >
@@ -580,7 +536,7 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                                     type="button"
                                     onClick={removeOverride}
                                     disabled={saving}
-                                    className="text-xs font-medium text-danger hover:underline disabled:opacity-50"
+                                    className="text-[11px] font-semibold text-ink-faint transition-colors hover:text-danger disabled:opacity-50"
                                 >
                                     Remove
                                 </button>
@@ -591,9 +547,9 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
             </div>
 
             {editing && (
-                <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-surface p-3">
+                <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
                     <div className="w-24">
-                        <label className="mb-1 block text-[10px] font-medium text-ink-muted">
+                        <label className="micro mb-1.5 block text-[10px]">
                             Override score
                         </label>
                         <input
@@ -604,11 +560,11 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                             value={score}
                             onChange={(e) => setScore(e.target.value)}
                             autoFocus
-                            className="field h-9 w-full tabular-nums"
+                            className="field tnum h-9 w-full py-0"
                         />
                     </div>
                     <div className="min-w-45 flex-1">
-                        <label className="mb-1 block text-[10px] font-medium text-ink-muted">
+                        <label className="micro mb-1.5 block text-[10px]">
                             Reason / feedback
                         </label>
                         <input
@@ -616,7 +572,7 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             placeholder="Optional"
-                            className="field h-9 w-full"
+                            className="field h-9 w-full py-0"
                         />
                     </div>
                     <Button
@@ -627,20 +583,22 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                     >
                         Save
                     </Button>
-                    <button
-                        type="button"
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                             setEditing(false);
                             setError("");
                         }}
-                        className="h-9 px-2 text-xs font-medium text-ink-muted hover:text-ink"
                     >
                         Cancel
-                    </button>
+                    </Button>
                 </div>
             )}
 
-            {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+            {error && (
+                <p className="mt-2 font-mono text-[11px] text-danger">{error}</p>
+            )}
         </div>
     );
 };

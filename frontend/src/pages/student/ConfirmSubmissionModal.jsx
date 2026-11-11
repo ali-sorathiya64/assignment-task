@@ -53,22 +53,22 @@ const ConfirmSubmissionModal = ({ assignment, onClose, onConfirmed }) => {
                 <div className="flex flex-col items-center justify-center py-8">
                     <div className="relative">
                         <span
-                            className="absolute inset-0 rounded-full bg-success/20"
+                            className="absolute inset-0 rounded-md bg-accent/30"
                             style={{
                                 animation:
-                                    "success-ring 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards"
+                                    "success-ring 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards"
                             }}
                         />
                         <span
-                            className="relative grid h-20 w-20 place-items-center rounded-full bg-success text-white"
+                            className="relative grid h-16 w-16 place-items-center rounded-md border border-ink bg-accent text-white shadow-md"
                             style={{
                                 animation:
-                                    "success-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards"
+                                    "success-pop 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards"
                             }}
                         >
                             <svg
-                                width="36"
-                                height="36"
+                                width="28"
+                                height="28"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -89,7 +89,7 @@ const ConfirmSubmissionModal = ({ assignment, onClose, onConfirmed }) => {
                         </span>
                     </div>
 
-                    <p className="mt-6 font-display text-lg font-bold text-ink">
+                    <p className="mt-8 text-xl font-extrabold tracking-tight text-ink">
                         Submission confirmed
                     </p>
                     <p className="mt-1 text-sm text-ink-muted">
@@ -136,8 +136,10 @@ const ConfirmSubmissionModal = ({ assignment, onClose, onConfirmed }) => {
                 )
             }
         >
+            <p className="micro mb-4">Step {step} / 2</p>
+
             {step === 1 ? (
-                <div className="space-y-4 text-sm text-ink-soft">
+                <div className="space-y-5 text-sm text-ink-soft">
                     <p className="leading-relaxed">
                         Your file is uploaded through the OneDrive link — not
                         through this app. Make sure your work is uploaded
@@ -165,7 +167,7 @@ const ConfirmSubmissionModal = ({ assignment, onClose, onConfirmed }) => {
                         can't be undone from here.
                     </p>
                     {error && (
-                        <p className="rounded-md bg-danger-soft px-3 py-2 text-danger">
+                        <p className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2 font-medium text-danger">
                             {error}
                         </p>
                     )}

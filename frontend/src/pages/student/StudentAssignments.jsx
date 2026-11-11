@@ -47,25 +47,19 @@ const StudentAssignments = () => {
                 subtitle="Upload your work through the submission link, then confirm it here."
             />
 
-            <div className="mb-6 inline-flex rounded-md border border-line bg-surface p-1">
+            <div className="mb-8 flex gap-6 border-b border-line">
                 {filters.map((item) => (
                     <button
                         key={item.key}
                         onClick={() => setFilter(item.key)}
-                        className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                        className={`relative -mb-px pb-3 text-sm font-semibold transition-colors ${
                             filter === item.key
-                                ? "bg-ink text-white"
-                                : "text-ink-soft hover:text-ink"
+                                ? "text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-accent"
+                                : "text-ink-muted hover:text-ink"
                         }`}
                     >
                         {item.label}
-                        <span
-                            className={`ml-1.5 text-xs ${
-                                filter === item.key
-                                    ? "text-white/60"
-                                    : "text-ink-faint"
-                            }`}
-                        >
+                        <span className="tnum ml-2 text-xs text-ink-faint">
                             {counts[item.key]}
                         </span>
                     </button>
@@ -91,7 +85,7 @@ const StudentAssignments = () => {
             )}
 
             {!loading && !error && visible.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {visible.map((assignment) => (
                         <AssignmentCard
                             key={assignment.id}

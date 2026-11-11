@@ -90,9 +90,9 @@ const Register = () => {
         <AuthShell
             title="Create your account"
             subtitle="Student sign-up. Professor accounts are set up by the admin."
-            aside="Joineazy"
+            aside="Joineazy / 02"
         >
-            <form onSubmit={submit} className="space-y-4" noValidate>
+            <form onSubmit={submit} className="space-y-5" noValidate>
                 <Field
                     id="name"
                     name="name"
@@ -145,27 +145,28 @@ const Register = () => {
                 />
 
                 {error && (
-                    <div className="rounded-lg bg-danger-soft px-3 py-2.5 text-xs text-danger">
+                    <div className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2.5 text-xs font-medium text-danger">
                         {error}
                     </div>
                 )}
 
                 <Button
                     type="submit"
+                    variant="accent"
                     size="lg"
                     className="w-full"
                     loading={loading}
                     disabled={!formValid}
                 >
-                    Create account
+                    Create account →
                 </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-ink-muted">
+            <p className="mt-8 text-center text-sm text-ink-muted">
                 Already registered?{" "}
                 <Link
                     to="/login"
-                    className="font-medium text-ink underline underline-offset-4 hover:text-accent"
+                    className="font-semibold text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
                 >
                     Sign in
                 </Link>
@@ -189,10 +190,7 @@ const Field = ({
 
     return (
         <div>
-            <label
-                htmlFor={id}
-                className="mb-1.5 block text-xs font-medium text-ink-soft"
-            >
+            <label htmlFor={id} className="label">
                 {label}
             </label>
             <input
@@ -202,15 +200,17 @@ const Field = ({
                 value={value}
                 onChange={onChange}
                 onBlur={onBlur}
-                className={`w-full rounded-lg border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint ${
+                className={`field ${
                     hasError
-                        ? "border-danger focus:border-danger focus:ring-2 focus:ring-danger/15"
-                        : "border-line focus:border-accent focus:ring-2 focus:ring-accent/15"
+                        ? "border-danger focus:border-danger focus:shadow-[3px_3px_0_0_var(--color-danger)]"
+                        : ""
                 }`}
                 {...rest}
             />
             {hasError && (
-                <p className="mt-1.5 text-[11px] text-danger">{error}</p>
+                <p className="mt-1.5 font-mono text-[11px] text-danger">
+                    {error}
+                </p>
             )}
         </div>
     );

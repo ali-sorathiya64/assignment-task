@@ -1,20 +1,19 @@
 const variants = {
     primary:
-        "bg-ink text-white hover:bg-ink-soft active:scale-[0.98] shadow-xs",
+        "bg-ink text-canvas border border-ink shadow-[3px_3px_0_0_var(--color-accent)] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_var(--color-accent)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none",
     accent:
-        "bg-accent text-white hover:bg-accent-hover active:scale-[0.98] shadow-xs",
+        "bg-accent text-white border border-ink shadow-[3px_3px_0_0_var(--color-ink)] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_0_var(--color-ink)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none",
     secondary:
-        "bg-surface text-ink border border-line hover:border-ink-faint hover:bg-canvas",
-    ghost:
-        "text-ink-soft hover:bg-line-soft hover:text-ink",
+        "bg-surface text-ink border border-line hover:border-ink active:scale-[0.98]",
+    ghost: "text-ink-soft hover:bg-line-soft hover:text-ink",
     danger:
-        "bg-danger text-white hover:bg-danger/90 active:scale-[0.98] shadow-xs"
+        "bg-danger text-white border border-ink shadow-[3px_3px_0_0_var(--color-ink)] hover:-translate-x-px hover:-translate-y-px active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
 };
 
 const sizes = {
     sm: "h-8 px-3 text-xs gap-1.5",
     md: "h-10 px-4 text-sm gap-2",
-    lg: "h-11 px-5 text-sm gap-2"
+    lg: "h-12 px-6 text-sm gap-2"
 };
 
 const Button = ({
@@ -28,13 +27,12 @@ const Button = ({
     <button
         {...rest}
         disabled={rest.disabled || loading}
-        className={`inline-flex items-center justify-center rounded-md font-medium tracking-tight
-                    transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
+        className={`inline-flex items-center justify-center rounded-md font-semibold tracking-tight
+                    transition-all duration-100 disabled:pointer-events-none disabled:opacity-40
                     ${variants[variant]} ${sizes[size]} ${className}`}
     >
         {loading && (
-            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-current" />
         )}
         {children}
     </button>

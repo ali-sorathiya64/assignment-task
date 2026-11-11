@@ -125,11 +125,17 @@ const AdminCourseDetail = () => {
         }
     };
 
+    const errorBox = formError && (
+        <p className="mt-4 rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+            {formError}
+        </p>
+    );
+
     return (
         <>
             <Link
                 to="/admin/courses"
-                className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                className="micro mb-6 inline-flex items-center gap-1 transition-colors hover:text-accent"
             >
                 ← Back to courses
             </Link>
@@ -137,11 +143,9 @@ const AdminCourseDetail = () => {
             <PageHeader
                 eyebrow={course.code}
                 title={course.name}
-                subtitle={
-                    course.description || "Course details and enrollment"
-                }
+                subtitle={course.description || "Course details and enrollment"}
                 action={
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <Button
                             variant="secondary"
                             size="sm"
@@ -169,70 +173,59 @@ const AdminCourseDetail = () => {
                 }
             />
 
-            <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:items-start">
-                {/* LEFT: enrollment */}
-                <aside className="space-y-4 lg:sticky lg:top-6">
-                    <Card className="px-5 py-5">
-                        <div className="mb-3 flex items-center justify-between">
-                            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted">
-                                Enrolled students
-                            </p>
-                            <span className="font-display text-base font-bold tabular-nums text-ink">
-                                {students.length}
-                            </span>
-                        </div>
+            <div className="grid gap-10 lg:grid-cols-[320px_1fr] lg:items-start">
+                <aside className="lg:sticky lg:top-24">
+                    <div className="mb-2 flex items-end justify-between border-b border-ink pb-3">
+                        <h2 className="text-2xl text-ink">Enrolled</h2>
+                        <span className="tnum text-2xl font-semibold text-ink">
+                            {students.length}
+                        </span>
+                    </div>
 
-                        {students.length === 0 ? (
-                            <p className="py-3 text-center text-xs text-ink-faint">
-                                No students enrolled yet.
-                            </p>
-                        ) : (
-                            <ul className="space-y-1.5">
-                                {students.map((student) => (
-                                    <li
-                                        key={student.id}
-                                        className="flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas"
+                    {students.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-ink-muted">
+                            No students enrolled yet.
+                        </p>
+                    ) : (
+                        <ul className="divide-y divide-line">
+                            {students.map((student) => (
+                                <li
+                                    key={student.id}
+                                    className="flex items-center gap-3 py-3"
+                                >
+                                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-surface text-[11px] font-bold text-ink-soft">
+                                        {initials(student.name)}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold text-ink">
+                                            {student.name}
+                                        </p>
+                                        <p className="truncate text-[11px] text-ink-muted">
+                                            {student.email}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => unenroll(student.id)}
+                                        className="text-[11px] font-semibold text-ink-faint transition-colors hover:text-danger"
+                                        title="Unenroll"
                                     >
-                                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-canvas text-[10px] font-semibold text-ink-soft">
-                                            {initials(student.name)}
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium text-ink">
-                                                {student.name}
-                                            </p>
-                                            <p className="truncate text-[11px] text-ink-muted">
-                                                {student.email}
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => unenroll(student.id)}
-                                            className="text-[11px] font-medium text-ink-faint transition-colors hover:text-danger"
-                                            title="Unenroll"
-                                        >
-                                            Remove
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </Card>
+                                        Remove
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </aside>
 
-                {/* RIGHT: assignments */}
                 <div className="min-w-0">
-                    <div className="mb-4 flex items-end justify-between">
-                        <div>
-                            <h2 className="font-display text-lg font-bold tracking-tight text-ink">
-                                Assignments in this course
-                            </h2>
-                            <p className="mt-0.5 text-xs text-ink-muted">
-                                Assignments attached to this course
-                            </p>
-                        </div>
+                    <div className="mb-5 flex items-end justify-between border-b border-ink pb-3">
+                        <h2 className="text-2xl text-ink">
+                            Assignments in this course
+                        </h2>
                         <Link
                             to="/admin/assignments"
-                            className="text-xs font-medium text-ink-muted transition-colors hover:text-ink"
+                            className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent"
                         >
                             Manage →
                         </Link>
@@ -249,11 +242,11 @@ const AdminCourseDetail = () => {
                                 <Link
                                     key={a.id}
                                     to={`/admin/assignments/${a.id}`}
-                                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-canvas"
+                                    className="group flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-canvas"
                                 >
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <p className="truncate font-medium text-ink">
+                                            <p className="truncate text-[15px] font-semibold text-ink">
                                                 {a.title}
                                             </p>
                                             <Badge tone="neutral">
@@ -262,11 +255,11 @@ const AdminCourseDetail = () => {
                                                     : "Individual"}
                                             </Badge>
                                         </div>
-                                        <p className="mt-0.5 text-xs text-ink-muted">
+                                        <p className="micro mt-1.5">
                                             Due {formatDate(a.due_date)}
                                         </p>
                                     </div>
-                                    <span className="shrink-0 text-xs font-medium text-ink-muted">
+                                    <span className="shrink-0 text-xs font-semibold text-ink-muted transition-colors group-hover:text-accent">
                                         Progress →
                                     </span>
                                 </Link>
@@ -276,7 +269,6 @@ const AdminCourseDetail = () => {
                 </div>
             </div>
 
-            {/* Enroll modal */}
             <Modal
                 open={enrollOpen}
                 onClose={() => setEnrollOpen(false)}
@@ -317,15 +309,9 @@ const AdminCourseDetail = () => {
                         </option>
                     ))}
                 </select>
-
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
 
-            {/* Bulk enroll modal */}
             <Modal
                 open={bulkOpen}
                 onClose={() => {
@@ -373,29 +359,23 @@ const AdminCourseDetail = () => {
                 </p>
 
                 {bulkResult && (
-                    <div className="mt-4 space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="rounded-md bg-success-soft px-3 py-2 text-center">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-success">
-                                    Enrolled
-                                </p>
-                                <p className="mt-0.5 font-display text-lg font-bold tabular-nums text-success">
+                    <div className="mt-5 space-y-4">
+                        <div className="grid grid-cols-3 divide-x divide-line rounded-md border border-line">
+                            <div className="px-3 py-3 text-center">
+                                <p className="micro text-success">Enrolled</p>
+                                <p className="tnum mt-1 text-2xl font-semibold text-success">
                                     {bulkResult.summary.enrolled}
                                 </p>
                             </div>
-                            <div className="rounded-md bg-warn-soft px-3 py-2 text-center">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-warn">
-                                    Skipped
-                                </p>
-                                <p className="mt-0.5 font-display text-lg font-bold tabular-nums text-warn">
+                            <div className="px-3 py-3 text-center">
+                                <p className="micro text-warn">Skipped</p>
+                                <p className="tnum mt-1 text-2xl font-semibold text-warn">
                                     {bulkResult.summary.skipped}
                                 </p>
                             </div>
-                            <div className="rounded-md bg-danger-soft px-3 py-2 text-center">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-danger">
-                                    Failed
-                                </p>
-                                <p className="mt-0.5 font-display text-lg font-bold tabular-nums text-danger">
+                            <div className="px-3 py-3 text-center">
+                                <p className="micro text-danger">Failed</p>
+                                <p className="tnum mt-1 text-2xl font-semibold text-danger">
                                     {bulkResult.summary.failed}
                                 </p>
                             </div>
@@ -403,14 +383,12 @@ const AdminCourseDetail = () => {
 
                         {bulkResult.failed.length > 0 && (
                             <div>
-                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                                    Not found
-                                </p>
+                                <p className="micro mb-2">Not found</p>
                                 <ul className="space-y-1">
                                     {bulkResult.failed.map((f, i) => (
                                         <li
                                             key={i}
-                                            className="rounded-md bg-canvas px-2.5 py-1.5 text-xs text-ink-soft"
+                                            className="rounded-sm bg-canvas px-2.5 py-1.5 font-mono text-xs text-ink-soft"
                                         >
                                             {f.email || f.studentId} — {f.reason}
                                         </li>
@@ -421,11 +399,7 @@ const AdminCourseDetail = () => {
                     </div>
                 )}
 
-                {formError && (
-                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
-                        {formError}
-                    </p>
-                )}
+                {errorBox}
             </Modal>
         </>
     );
