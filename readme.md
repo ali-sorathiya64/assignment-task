@@ -9,7 +9,7 @@ Built as a Full Stack Intern technical task for Joineazy.
 - **Frontend:** https://joineazy-assignment-system.vercel.app
 - **Backend:** https://joineazy-backend-4ja5.onrender.com
 - **API Documentation:** https://joineazy-backend-4ja5.onrender.com/api-docs
-- **Demo Video:** 
+- **Demo Video:** https://youtu.be/f7oq123ae6c
 
 ## Overview
 
@@ -458,7 +458,7 @@ http://localhost:8000/api-docs
 Health check:
 
 ```text
-http://localhost:8000/api/health
+http://localhost:8000/health
 ```
 
 ### 3. Frontend Setup
@@ -653,6 +653,7 @@ The AI assistant is an additional enhancement beyond the core assignment managem
 https://github.com/ali-sorathiya64/assignment-task
 
 **Demo Video:**  
+https://youtu.be/f7oq123ae6c
 
 **Live Application:**  
 https://joineazy-assignment-system.vercel.app

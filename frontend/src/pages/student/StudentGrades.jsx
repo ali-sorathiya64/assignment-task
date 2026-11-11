@@ -112,7 +112,7 @@ const StudentGrades = () => {
                                 Distribution
                             </p>
 
-                            <div className="flex h-[160px] items-end gap-2">
+                            <div className="flex h-40 items-end gap-2">
                                 <BandBar
                                     count={
                                         graded.filter(

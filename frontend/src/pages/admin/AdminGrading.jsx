@@ -38,7 +38,7 @@ const Tally = ({ graded, total, tone = "dark", size = "md" }) => {
 
     return (
         <div
-            className="flex flex-wrap gap-[3px]"
+            className="flex flex-wrap gap-0.75"
             role="img"
             aria-label={`${graded} of ${total} graded`}
         >
