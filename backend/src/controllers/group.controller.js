@@ -1,6 +1,7 @@
 import pool from "../db/connection.js";
 
 export const createGroup = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { name } = req.body;
 
@@ -11,7 +12,7 @@ export const createGroup = async (req, res) => {
             });
         }
 
-        const existingGroup = await pool.query(
+        const existingGroup = await client.query(
             `SELECT g.id
              FROM groups g
              JOIN group_members gm ON gm.group_id = g.id
@@ -26,7 +27,8 @@ export const createGroup = async (req, res) => {
             });
         }
 
-        const groupResult = await pool.query(
+        await client.query("BEGIN");
+        const groupResult = await client.query(
             `INSERT INTO groups (name, created_by, leader_id)
              VALUES ($1, $2, $2)
              RETURNING id, name, created_by, leader_id, created_at`,
@@ -35,11 +37,12 @@ export const createGroup = async (req, res) => {
 
         const group = groupResult.rows[0];
 
-        await pool.query(
+        await client.query(
             `INSERT INTO group_members (group_id, user_id)
              VALUES ($1, $2)`,
             [group.id, req.user.id]
         );
+        await client.query("COMMIT");
 
         return res.status(201).json({
             success: true,
@@ -47,11 +50,14 @@ export const createGroup = async (req, res) => {
             group
         });
     } catch (error) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
         console.error("Create group error:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error"
         });
+    } finally {
+        client.release();
     }
 };
 

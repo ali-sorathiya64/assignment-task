@@ -404,6 +404,144 @@ export const enrollStudent = async (req, res) => {
     }
 };
 
+export const bulkEnrollStudents = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { courseId } = req.params;
+        const { studentIds, emails } = req.body;
+
+        const ids = Array.isArray(studentIds) ? studentIds : [];
+        const emailList = Array.isArray(emails) ? emails : [];
+
+        if (ids.length === 0 && emailList.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "studentIds or emails array is required"
+            });
+        }
+
+        const courseResult = await client.query(
+            `SELECT id, professor_id FROM courses WHERE id = $1`,
+            [courseId]
+        );
+
+        if (courseResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found"
+            });
+        }
+        if (courseResult.rows[0].professor_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not own this course"
+            });
+        }
+
+        const successful = [];
+        const skipped = [];
+        const failed = [];
+
+        await client.query("BEGIN");
+
+        // Resolve by IDs
+        for (const rawId of ids) {
+            const studentId = Number(rawId);
+            if (!Number.isInteger(studentId) || studentId <= 0) {
+                failed.push({ input: rawId, reason: "invalid studentId" });
+                continue;
+            }
+            const s = await client.query(
+                `SELECT id, name, email FROM users
+                 WHERE id = $1 AND role = 'student'`,
+                [studentId]
+            );
+            if (s.rows.length === 0) {
+                failed.push({ studentId, reason: "student not found" });
+                continue;
+            }
+            const exists = await client.query(
+                `SELECT 1 FROM course_students
+                 WHERE course_id = $1 AND student_id = $2`,
+                [courseId, studentId]
+            );
+            if (exists.rows.length > 0) {
+                skipped.push({ studentId, reason: "already enrolled" });
+                continue;
+            }
+            await client.query(
+                `INSERT INTO course_students (course_id, student_id)
+                 VALUES ($1, $2)`,
+                [courseId, studentId]
+            );
+            successful.push(s.rows[0]);
+        }
+
+        // Resolve by emails
+        for (const rawEmail of emailList) {
+            if (!rawEmail || typeof rawEmail !== "string") {
+                failed.push({ input: rawEmail, reason: "invalid email" });
+                continue;
+            }
+            const email = rawEmail.trim().toLowerCase();
+            const s = await client.query(
+                `SELECT id, name, email FROM users
+                 WHERE email = $1 AND role = 'student'`,
+                [email]
+            );
+            if (s.rows.length === 0) {
+                failed.push({ email, reason: "student not found" });
+                continue;
+            }
+            const studentId = s.rows[0].id;
+            const exists = await client.query(
+                `SELECT 1 FROM course_students
+                 WHERE course_id = $1 AND student_id = $2`,
+                [courseId, studentId]
+            );
+            if (exists.rows.length > 0) {
+                skipped.push({ studentId, email, reason: "already enrolled" });
+                continue;
+            }
+            await client.query(
+                `INSERT INTO course_students (course_id, student_id)
+                 VALUES ($1, $2)`,
+                [courseId, studentId]
+            );
+            successful.push(s.rows[0]);
+        }
+
+        await client.query("COMMIT");
+
+        try {
+            await indexCourse(Number(courseId));
+        } catch (aiError) {
+            console.error("Course AI re-index failed:", aiError.message);
+        }
+
+        return res.status(200).json({
+            success: true,
+            summary: {
+                enrolled: successful.length,
+                skipped: skipped.length,
+                failed: failed.length
+            },
+            successful,
+            skipped,
+            failed
+        });
+    } catch (error) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
+        console.error("Bulk enroll error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    } finally {
+        client.release();
+    }
+};
+
 export const unenrollStudent = async (req, res) => {
     try {
         const { courseId, studentId } = req.params;

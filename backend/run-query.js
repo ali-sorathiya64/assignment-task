@@ -8,7 +8,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-const sql = fs.readFileSync('./src/db/migrations/round3-grading.sql', 'utf8');
+const sql = fs.readFileSync('./src/db/migrations/round3-hardening.sql', 'utf8');
 
 pool.query(sql)
   .then(() => console.log(" Round 3 migration applied"))

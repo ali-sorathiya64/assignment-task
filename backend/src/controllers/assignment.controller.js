@@ -12,6 +12,23 @@ const resolveMaxScore = (max_score) => {
     return { ok: true, value: parsed };
 };
 
+const resolveSubmissionType = (submission_type) => {
+    if (submission_type === undefined || submission_type === null || submission_type === "") {
+        return { ok: true, value: "individual" };
+    }
+    if (submission_type === "individual" || submission_type === "group") {
+        return { ok: true, value: submission_type };
+    }
+    return { ok: false };
+};
+
+const resolveDate = (due_date) => {
+    if (!due_date) return { ok: false, reason: "required" };
+    const parsed = new Date(due_date).getTime();
+    if (!Number.isFinite(parsed)) return { ok: false, reason: "invalid" };
+    return { ok: true, value: parsed };
+};
+
 export const createAssignment = async (req, res) => {
     try {
         const {
@@ -39,15 +56,18 @@ export const createAssignment = async (req, res) => {
             });
         }
 
-        const parsedDate = new Date(due_date).getTime();
-        if (!Number.isFinite(parsedDate)) {
+        const dateCheck = resolveDate(due_date);
+        if (!dateCheck.ok) {
             return res.status(400).json({
                 success: false,
-                message: "Due date is invalid"
+                message:
+                    dateCheck.reason === "invalid"
+                        ? "Due date is invalid"
+                        : "Due date is required"
             });
         }
 
-        if (parsedDate <= Date.now()) {
+        if (dateCheck.value <= Date.now()) {
             return res.status(400).json({
                 success: false,
                 message: "Due date cannot be in the past"
@@ -61,7 +81,14 @@ export const createAssignment = async (req, res) => {
             });
         }
 
-        const type = submission_type === "group" ? "group" : "individual";
+        const typeCheck = resolveSubmissionType(submission_type);
+        if (!typeCheck.ok) {
+            return res.status(400).json({
+                success: false,
+                message: "submission_type must be 'individual' or 'group'"
+            });
+        }
+        const type = typeCheck.value;
 
         const maxCheck = resolveMaxScore(max_score);
         if (!maxCheck.ok) {
@@ -206,6 +233,7 @@ export const getAssignments = async (req, res) => {
 };
 
 export const assignToGroup = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { assignmentId } = req.params;
         const { groupId } = req.body;
@@ -217,7 +245,9 @@ export const assignToGroup = async (req, res) => {
             });
         }
 
-        const assignmentResult = await pool.query(
+        await client.query("BEGIN");
+
+        const assignmentResult = await client.query(
             `SELECT a.id, a.title, a.course_id,
                     COALESCE(c.professor_id, a.created_by) AS owner_id
              FROM assignments a
@@ -227,6 +257,7 @@ export const assignToGroup = async (req, res) => {
         );
 
         if (assignmentResult.rows.length === 0) {
+            await client.query("ROLLBACK");
             return res.status(404).json({
                 success: false,
                 message: "Assignment not found"
@@ -236,18 +267,20 @@ export const assignToGroup = async (req, res) => {
         const assignment = assignmentResult.rows[0];
 
         if (assignment.owner_id !== req.user.id) {
+            await client.query("ROLLBACK");
             return res.status(403).json({
                 success: false,
                 message: "You do not own this assignment"
             });
         }
 
-        const groupResult = await pool.query(
+        const groupResult = await client.query(
             `SELECT id, name FROM groups WHERE id = $1`,
             [groupId]
         );
 
         if (groupResult.rows.length === 0) {
+            await client.query("ROLLBACK");
             return res.status(404).json({
                 success: false,
                 message: "Group not found"
@@ -255,7 +288,7 @@ export const assignToGroup = async (req, res) => {
         }
 
         if (assignment.course_id) {
-            const invalidMembers = await pool.query(
+            const invalidMembers = await client.query(
                 `SELECT gm.user_id
                  FROM group_members gm
                  WHERE gm.group_id = $1
@@ -267,6 +300,7 @@ export const assignToGroup = async (req, res) => {
             );
 
             if (invalidMembers.rows.length > 0) {
+                await client.query("ROLLBACK");
                 return res.status(400).json({
                     success: false,
                     message:
@@ -275,25 +309,55 @@ export const assignToGroup = async (req, res) => {
             }
         }
 
-        const existingAssignment = await pool.query(
+        const groupMembers = await client.query(
+            `SELECT user_id FROM group_members WHERE group_id = $1`,
+            [groupId]
+        );
+
+        if (groupMembers.rows.length > 0) {
+            const userIds = groupMembers.rows.map((r) => r.user_id);
+            const conflict = await client.query(
+                `SELECT DISTINCT gm.user_id
+                 FROM assignment_groups ag
+                 JOIN group_members gm ON gm.group_id = ag.group_id
+                 WHERE ag.assignment_id = $1
+                   AND ag.group_id <> $2
+                   AND gm.user_id = ANY($3::int[])`,
+                [assignmentId, groupId, userIds]
+            );
+
+            if (conflict.rows.length > 0) {
+                await client.query("ROLLBACK");
+                return res.status(409).json({
+                    success: false,
+                    message:
+                        "One or more group members are already in another group for this assignment"
+                });
+            }
+        }
+
+        const existingAssignment = await client.query(
             `SELECT id FROM assignment_groups
              WHERE assignment_id = $1 AND group_id = $2`,
             [assignmentId, groupId]
         );
 
         if (existingAssignment.rows.length > 0) {
+            await client.query("ROLLBACK");
             return res.status(409).json({
                 success: false,
                 message: "Assignment is already assigned to this group"
             });
         }
 
-        const result = await pool.query(
+        const result = await client.query(
             `INSERT INTO assignment_groups (assignment_id, group_id)
              VALUES ($1, $2)
              RETURNING id, assignment_id, group_id`,
             [assignmentId, groupId]
         );
+
+        await client.query("COMMIT");
 
         return res.status(201).json({
             success: true,
@@ -301,11 +365,14 @@ export const assignToGroup = async (req, res) => {
             assignmentGroup: result.rows[0]
         });
     } catch (error) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
         console.error("Assign assignment to group error:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error"
         });
+    } finally {
+        client.release();
     }
 };
 
@@ -419,11 +486,14 @@ export const updateAssignment = async (req, res) => {
             });
         }
 
-        const parsedDate = new Date(due_date).getTime();
-        if (!Number.isFinite(parsedDate)) {
+        const dateCheck = resolveDate(due_date);
+        if (!dateCheck.ok) {
             return res.status(400).json({
                 success: false,
-                message: "Due date is invalid"
+                message:
+                    dateCheck.reason === "invalid"
+                        ? "Due date is invalid"
+                        : "Due date is required"
             });
         }
 
@@ -435,7 +505,7 @@ export const updateAssignment = async (req, res) => {
         }
 
         const existingAssignment = await pool.query(
-            `SELECT a.id, a.due_date,
+            `SELECT a.id, a.due_date, a.submission_type, a.course_id,
                     COALESCE(c.professor_id, a.created_by) AS owner_id
              FROM assignments a
              LEFT JOIN courses c ON c.id = a.course_id
@@ -459,14 +529,43 @@ export const updateAssignment = async (req, res) => {
 
         const oldDate = new Date(existingAssignment.rows[0].due_date).getTime();
 
-        if (parsedDate !== oldDate && parsedDate <= Date.now()) {
+        if (dateCheck.value !== oldDate && dateCheck.value <= Date.now()) {
             return res.status(400).json({
                 success: false,
                 message: "Due date cannot be in the past"
             });
         }
 
-        const type = submission_type === "group" ? "group" : "individual";
+        const typeCheck = resolveSubmissionType(submission_type);
+        if (!typeCheck.ok) {
+            return res.status(400).json({
+                success: false,
+                message: "submission_type must be 'individual' or 'group'"
+            });
+        }
+        const type = typeCheck.value;
+
+        if (
+            type !== existingAssignment.rows[0].submission_type ||
+            (course_id || null) !== existingAssignment.rows[0].course_id
+        ) {
+            const hasSubmissions = await pool.query(
+                `SELECT 1 FROM submissions WHERE assignment_id = $1 LIMIT 1`,
+                [assignmentId]
+            );
+            const hasGrades = await pool.query(
+                `SELECT 1 FROM grades WHERE assignment_id = $1 LIMIT 1`,
+                [assignmentId]
+            );
+
+            if (hasSubmissions.rows.length > 0 || hasGrades.rows.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message:
+                        "Cannot change submission type or course after submissions or grades exist"
+                });
+            }
+        }
 
         const maxCheck = resolveMaxScore(max_score);
         if (!maxCheck.ok) {

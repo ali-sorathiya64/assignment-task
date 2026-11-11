@@ -20,7 +20,6 @@ export const confirmSubmission = async (req, res) => {
 
         const assignment = assignmentResult.rows[0];
         const isGroupAssignment = assignment.submission_type === "group";
-
         const groupResult = await pool.query(
             `SELECT DISTINCT g.id AS group_id, g.leader_id, g.name AS group_name
              FROM groups g
@@ -38,6 +37,7 @@ export const confirmSubmission = async (req, res) => {
                        )
                    )
                )
+             ORDER BY g.id ASC
              LIMIT 1`,
             [assignmentId, req.user.id, assignment.course_id]
         );

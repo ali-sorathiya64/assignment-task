@@ -11,7 +11,7 @@ const toId = (value) => {
 const loadOwnedAssignment = async (assignmentId, professorId) => {
     const result = await pool.query(
         `SELECT a.id, a.title, a.submission_type, a.course_id, a.max_score,
-                a.onedrive_link, a.due_date,
+                a.onedrive_link, a.due_date, a.is_global,
                 COALESCE(c.professor_id, a.created_by) AS owner_id
          FROM assignments a
          LEFT JOIN courses c ON c.id = a.course_id
@@ -63,16 +63,17 @@ export const getGradingDashboard = async (req, res) => {
         const result = await pool.query(
             `SELECT c.id AS course_id, c.name AS course_name, c.code AS course_code,
                     a.id AS assignment_id, a.title, a.submission_type, a.max_score, a.due_date,
+                    a.is_global,
                     (SELECT COUNT(*)::int FROM submissions s
                      WHERE s.assignment_id = a.id AND s.confirmed = true) AS submitted_count,
                     (SELECT COUNT(*)::int FROM grades gr
                      WHERE gr.assignment_id = a.id AND gr.student_id IS NULL) AS group_graded_count,
                     (SELECT COUNT(*)::int FROM grades gr
                      WHERE gr.assignment_id = a.id AND gr.group_id IS NULL) AS individual_graded_count
-             FROM courses c
-             JOIN assignments a ON a.course_id = c.id
-             WHERE c.professor_id = $1
-             ORDER BY c.created_at DESC, a.due_date ASC`,
+             FROM assignments a
+             LEFT JOIN courses c ON c.id = a.course_id
+             WHERE (c.professor_id = $1 OR a.created_by = $1)
+             ORDER BY a.due_date ASC`,
             [req.user.id]
         );
         return res.status(200).json({ success: true, rows: result.rows });
@@ -114,6 +115,11 @@ export const getAssignmentSubmissions = async (req, res) => {
                      EXISTS (SELECT 1 FROM assignment_groups ag
                              WHERE ag.assignment_id = $1 AND ag.group_id = g.id)
                      OR (
+                         $3::boolean = true
+                         AND NOT EXISTS (SELECT 1 FROM assignment_groups ag
+                                         WHERE ag.assignment_id = $1)
+                     )
+                     OR (
                          COALESCE($2, 0) > 0
                          AND EXISTS (
                              SELECT 1 FROM group_members gm2
@@ -124,7 +130,7 @@ export const getAssignmentSubmissions = async (req, res) => {
                  )
                  GROUP BY g.id, s.id, s.confirmed, s.confirmed_at
                  ORDER BY g.name`,
-                [assignmentId, assignment.course_id]
+                [assignmentId, assignment.course_id, assignment.is_global]
             );
             return res.status(200).json({ success: true, assignment, groups: result.rows });
         }
@@ -139,13 +145,15 @@ export const getAssignmentSubmissions = async (req, res) => {
                                   AND gr.group_id IS NULL
              WHERE u.role = 'student'
                AND (
-                   u.id IN (SELECT student_id FROM assignment_students WHERE assignment_id = $1)
+                   $3::boolean = true
+                   OR u.id IN (SELECT student_id FROM assignment_students WHERE assignment_id = $1)
                    OR (COALESCE($2, 0) > 0 AND u.id IN (
                        SELECT student_id FROM course_students WHERE course_id = $2
                    ))
+                   OR s.id IS NOT NULL
                )
              ORDER BY u.name`,
-            [assignmentId, assignment.course_id]
+            [assignmentId, assignment.course_id, assignment.is_global]
         );
         return res.status(200).json({ success: true, assignment, students: result.rows });
     } catch (error) {

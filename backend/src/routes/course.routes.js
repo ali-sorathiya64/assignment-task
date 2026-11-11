@@ -6,7 +6,8 @@ import {
     getCourseDetail,
     updateCourse,
     enrollStudent,
-    unenrollStudent
+    unenrollStudent,
+    bulkEnrollStudents
 } from "../controllers/course.controller.js";
 import { AuthMiddleware } from "../middleware/auth.middleware.js";
 import { RoleMiddleware } from "../middleware/role.middleware.js";
@@ -186,6 +187,83 @@ router.post(
     AuthMiddleware,
     RoleMiddleware("admin"),
     enrollStudent
+);
+
+/**
+ * @swagger
+ * /api/courses/{courseId}/students/bulk:
+ *   post:
+ *     summary: Bulk enroll students into a course
+ *     description: Enroll multiple students at once by IDs and/or emails. Returns a summary of successful, skipped (already enrolled) and failed entries.
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               studentIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 example: [2, 3, 4]
+ *               emails:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["kai@gmail.com", "root@gmail.com"]
+ *     responses:
+ *       200:
+ *         description: Bulk enrollment completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     enrolled:
+ *                       type: integer
+ *                     skipped:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                 successful:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 skipped:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 failed:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Missing studentIds and emails, or invalid input
+ *       403:
+ *         description: Professor does not own this course
+ *       404:
+ *         description: Course not found
+ */
+router.post(
+    "/:courseId/students/bulk",
+    AuthMiddleware,
+    RoleMiddleware("admin"),
+    bulkEnrollStudents
 );
 
 /**

@@ -5,17 +5,12 @@ export const getAssignmentProgress = async (req, res) => {
         const { assignmentId } = req.params;
 
         const assignmentResult = await pool.query(
-            `SELECT
-                id,
-                title,
-                description,
-                due_date,
-                onedrive_link,
-                is_global,
-                submission_type,
-                course_id
-             FROM assignments
-             WHERE id = $1`,
+            `SELECT a.id, a.title, a.description, a.due_date, a.onedrive_link,
+                    a.is_global, a.submission_type, a.course_id, a.max_score,
+                    COALESCE(c.professor_id, a.created_by) AS owner_id
+             FROM assignments a
+             LEFT JOIN courses c ON c.id = a.course_id
+             WHERE a.id = $1`,
             [assignmentId]
         );
 
@@ -28,27 +23,31 @@ export const getAssignmentProgress = async (req, res) => {
 
         const assignment = assignmentResult.rows[0];
 
+        if (assignment.owner_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not own this assignment"
+            });
+        }
+
         let result;
 
         if (assignment.is_global) {
             result = await pool.query(
-                `SELECT
+                `SELECT DISTINCT
                     u.id AS student_id,
                     u.name AS student_name,
                     u.email AS student_email,
-                    gm.group_id,
+                    g.id AS group_id,
                     g.name AS group_name,
                     g.leader_id,
                     COALESCE(s.confirmed, false) AS submitted,
                     s.confirmed_at
                  FROM users u
-                 LEFT JOIN group_members gm
-                    ON gm.user_id = u.id
-                 LEFT JOIN groups g
-                    ON g.id = gm.group_id
+                 LEFT JOIN group_members gm ON gm.user_id = u.id
+                 LEFT JOIN groups g ON g.id = gm.group_id
                  LEFT JOIN submissions s
-                    ON s.assignment_id = $1
-                    AND s.student_id = u.id
+                    ON s.assignment_id = $1 AND s.student_id = u.id
                  WHERE u.role = 'student'
                  ORDER BY u.id`,
                 [assignmentId]
@@ -65,13 +64,10 @@ export const getAssignmentProgress = async (req, res) => {
                     COALESCE(s.confirmed, false) AS submitted,
                     s.confirmed_at
                  FROM users u
-                 LEFT JOIN group_members gm
-                    ON gm.user_id = u.id
-                 LEFT JOIN groups g
-                    ON g.id = gm.group_id
+                 LEFT JOIN group_members gm ON gm.user_id = u.id
+                 LEFT JOIN groups g ON g.id = gm.group_id
                  LEFT JOIN submissions s
-                    ON s.assignment_id = $1
-                    AND s.student_id = u.id
+                    ON s.assignment_id = $1 AND s.student_id = u.id
                  WHERE u.role = 'student'
                    AND (
                         EXISTS (
@@ -156,7 +152,6 @@ export const getAssignmentProgress = async (req, res) => {
         });
     } catch (error) {
         console.error("Get assignment progress error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"

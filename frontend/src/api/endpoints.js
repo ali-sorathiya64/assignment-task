@@ -30,6 +30,8 @@ export const courseApi = {
     update: (courseId, payload) => api.put(`/api/courses/${courseId}`, payload),
     enrollStudent: (courseId, payload) =>
         api.post(`/api/courses/${courseId}/students`, payload),
+    bulkEnrollStudents: (courseId, payload) =>
+        api.post(`/api/courses/${courseId}/students/bulk`, payload),
     unenrollStudent: (courseId, studentId) =>
         api.delete(`/api/courses/${courseId}/students/${studentId}`)
 };
