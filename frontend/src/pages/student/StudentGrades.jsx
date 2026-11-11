@@ -63,33 +63,112 @@ const StudentGrades = () => {
                 />
             ) : (
                 <>
-                    <Card className="mb-10 grid divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                        <div className="px-6 py-6">
-                            <p className="micro">Graded</p>
-                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-ink">
-                                {graded.length}
-                                <span className="text-xl text-ink-faint">
-                                    {" "}/ {grades.length}
-                                </span>
+                    {/* ============ NEW HERO (transcript style) ============ */}
+                    <div className="mb-12 grid gap-px border border-ink bg-ink md:grid-cols-[1.4fr_1fr]">
+                        {/* Left — giant average on cream surface */}
+                        <div className="bg-surface px-8 py-10 sm:px-10 sm:py-12">
+                            <p className="mb-6 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-ink-muted">
+                                <span className="h-2 w-2 bg-accent" />
+                                Cumulative average
+                            </p>
+
+                            <div className="flex items-baseline gap-2">
+                                <p className="tnum text-[96px] font-semibold leading-[0.85] tracking-[-0.055em] text-ink sm:text-[128px]">
+                                    {average}
+                                </p>
+                                <p className="tnum text-3xl font-medium text-ink-faint sm:text-4xl">
+                                    %
+                                </p>
+                            </div>
+
+                            <div className="mt-8 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-6">
+                                <div>
+                                    <p className="micro">Graded</p>
+                                    <p className="tnum mt-1.5 text-2xl font-semibold text-ink">
+                                        {graded.length}
+                                        <span className="text-sm text-ink-faint">
+                                            {" "}/ {grades.length}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="micro">Earned</p>
+                                    <p className="tnum mt-1.5 text-2xl font-semibold text-ink">
+                                        {totalEarned}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="micro">Possible</p>
+                                    <p className="tnum mt-1.5 text-2xl font-semibold text-ink">
+                                        {totalMax}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right — grade band bar chart on ink panel */}
+                        <div className="bg-ink px-8 py-10 text-canvas sm:px-10 sm:py-12">
+                            <p className="mb-6 font-mono text-[11px] uppercase tracking-wider text-canvas/50">
+                                Distribution
+                            </p>
+
+                            <div className="flex h-[160px] items-end gap-2">
+                                <BandBar
+                                    count={
+                                        graded.filter(
+                                            (g) =>
+                                                (Number(g.score) /
+                                                    Number(g.max_score)) *
+                                                    100 >=
+                                                90
+                                        ).length
+                                    }
+                                    label="90+"
+                                />
+                                <BandBar
+                                    count={
+                                        graded.filter((g) => {
+                                            const p =
+                                                (Number(g.score) /
+                                                    Number(g.max_score)) *
+                                                100;
+                                            return p >= 75 && p < 90;
+                                        }).length
+                                    }
+                                    label="75"
+                                />
+                                <BandBar
+                                    count={
+                                        graded.filter((g) => {
+                                            const p =
+                                                (Number(g.score) /
+                                                    Number(g.max_score)) *
+                                                100;
+                                            return p >= 50 && p < 75;
+                                        }).length
+                                    }
+                                    label="50"
+                                />
+                                <BandBar
+                                    count={
+                                        graded.filter(
+                                            (g) =>
+                                                (Number(g.score) /
+                                                    Number(g.max_score)) *
+                                                    100 <
+                                                50
+                                        ).length
+                                    }
+                                    label="&lt;50"
+                                    tone="danger"
+                                />
+                            </div>
+
+                            <p className="mt-5 border-t border-white/10 pt-3 font-mono text-[10px] uppercase tracking-wider text-canvas/40">
+                                Across {graded.length} graded
                             </p>
                         </div>
-                        <div className="px-6 py-6">
-                            <p className="micro">Total score</p>
-                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-ink">
-                                {totalEarned}
-                                <span className="text-xl text-ink-faint">
-                                    {" "}/ {totalMax}
-                                </span>
-                            </p>
-                        </div>
-                        <div className="px-6 py-6">
-                            <p className="micro">Average</p>
-                            <p className="tnum mt-4 text-5xl font-semibold leading-none text-accent">
-                                {average}
-                                <span className="text-xl">%</span>
-                            </p>
-                        </div>
-                    </Card>
+                    </div>
 
                     <div className="mb-8 flex gap-6 border-b border-line">
                         {filters.map((item) => (
@@ -135,6 +214,34 @@ const StudentGrades = () => {
         </>
     );
 };
+
+/* -------------------- Hero bar chart -------------------- */
+
+const BandBar = ({ count, label, tone = "accent" }) => {
+    const height = count === 0 ? 4 : Math.max(10, count * 36);
+
+    const toneClass =
+        tone === "danger"
+            ? "bg-danger"
+            : count === 0
+              ? "bg-white/10"
+              : "bg-canvas";
+
+    return (
+        <div className="flex flex-1 flex-col items-center justify-end gap-2">
+            <p className="tnum text-xs font-semibold text-canvas">{count}</p>
+            <div
+                className={`w-full ${toneClass} transition-[height] duration-500`}
+                style={{ height: `${height}px` }}
+            />
+            <p className="font-mono text-[9px] uppercase tracking-wider text-canvas/50">
+                {label}
+            </p>
+        </div>
+    );
+};
+
+/* -------------------- Individual grade card (unchanged) -------------------- */
 
 const GradeCard = ({ grade }) => {
     const graded = grade.graded;

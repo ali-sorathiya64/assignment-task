@@ -613,15 +613,24 @@ The following functional areas have been tested during development.
 
 ## Screenshots
 
-Screenshots can be added under `docs/screenshots/` to demonstrate the application's main workflows.
+### Professor grading dashboard
+![Grading dashboard](docs/screenshots/grading-dashboard.jpg)
 
-Suggested screenshots:
+### Group grading with individual override
+![Group grading override](docs/screenshots/group-grading-override.jpg)
 
-- Student dashboard
-- Course and group management
-- Professor grading dashboard
-- Group grading with individual override
-- Student grades and feedback
+### Individual grading
+![Individual grading](docs/screenshots/individual-grading.jpg)
+
+### Student grades view
+![Student grades](docs/screenshots/student-grades.jpg)
+
+### Bulk student enrollment
+![Bulk enroll](docs/screenshots/bulk-enroll.jpg)
+
+### Deadline validation
+![Validation error](docs/screenshots/validation-error.jpg)
+
 
 ## Project Scope
 
