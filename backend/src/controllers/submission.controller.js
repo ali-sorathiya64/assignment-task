@@ -22,14 +22,24 @@ export const confirmSubmission = async (req, res) => {
         const isGroupAssignment = assignment.submission_type === "group";
 
         const groupResult = await pool.query(
-            `SELECT ag.group_id, g.leader_id, g.name AS group_name
-             FROM assignment_groups ag
-             JOIN groups g ON g.id = ag.group_id
-             JOIN group_members gm ON gm.group_id = ag.group_id
-             WHERE ag.assignment_id = $1
-               AND gm.user_id = $2
+            `SELECT DISTINCT g.id AS group_id, g.leader_id, g.name AS group_name
+             FROM groups g
+             JOIN group_members gm ON gm.group_id = g.id
+             LEFT JOIN assignment_groups ag
+                ON ag.group_id = g.id AND ag.assignment_id = $1
+             WHERE gm.user_id = $2
+               AND (
+                   ag.id IS NOT NULL
+                   OR (
+                       COALESCE($3, 0) > 0
+                       AND EXISTS (
+                           SELECT 1 FROM course_students cs
+                           WHERE cs.course_id = $3 AND cs.student_id = $2
+                       )
+                   )
+               )
              LIMIT 1`,
-            [assignmentId, req.user.id]
+            [assignmentId, req.user.id, assignment.course_id]
         );
 
         const studentAssignmentResult = await pool.query(
@@ -225,7 +235,6 @@ export const confirmSubmission = async (req, res) => {
         });
     } catch (error) {
         console.error("Confirm submission error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"
@@ -238,7 +247,7 @@ export const getSubmissionStatus = async (req, res) => {
         const { assignmentId } = req.params;
 
         const assignmentResult = await pool.query(
-            `SELECT id, submission_type
+            `SELECT id, submission_type, course_id
              FROM assignments
              WHERE id = $1`,
             [assignmentId]
@@ -251,8 +260,8 @@ export const getSubmissionStatus = async (req, res) => {
             });
         }
 
-        const isGroupAssignment =
-            assignmentResult.rows[0].submission_type === "group";
+        const assignment = assignmentResult.rows[0];
+        const isGroupAssignment = assignment.submission_type === "group";
 
         if (!isGroupAssignment) {
             const result = await pool.query(
@@ -296,20 +305,31 @@ export const getSubmissionStatus = async (req, res) => {
         }
 
         const groupResult = await pool.query(
-            `SELECT
-                ag.group_id,
+            `SELECT DISTINCT
+                g.id AS group_id,
                 g.name AS group_name,
                 g.leader_id,
                 leader.name AS leader_name,
                 (g.leader_id = $1) AS is_leader
-             FROM assignment_groups ag
-             JOIN groups g ON g.id = ag.group_id
-             JOIN group_members gm ON gm.group_id = ag.group_id
+             FROM groups g
+             JOIN group_members gm ON gm.group_id = g.id
              LEFT JOIN users leader ON leader.id = g.leader_id
-             WHERE ag.assignment_id = $2
-               AND gm.user_id = $1
+             LEFT JOIN assignment_groups ag
+                ON ag.group_id = g.id AND ag.assignment_id = $2
+             WHERE gm.user_id = $1
+               AND (
+                   ag.id IS NOT NULL
+                   OR (
+                       COALESCE($3, 0) > 0
+                       AND EXISTS (
+                           SELECT 1 FROM course_students cs
+                           WHERE cs.course_id = $3 AND cs.student_id = $1
+                       )
+                   )
+               )
+             ORDER BY g.id
              LIMIT 1`,
-            [req.user.id, assignmentId]
+            [req.user.id, assignmentId, assignment.course_id]
         );
 
         if (groupResult.rows.length === 0) {
@@ -362,7 +382,6 @@ export const getSubmissionStatus = async (req, res) => {
         });
     } catch (error) {
         console.error("Get submission status error:", error);
-
         return res.status(500).json({
             success: false,
             message: "Internal server error"

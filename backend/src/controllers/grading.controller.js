@@ -106,15 +106,25 @@ export const getAssignmentSubmissions = async (req, res) => {
                                 WHERE gr.assignment_id = $1 AND gr.group_id = g.id
                                   AND gr.student_id = u.id LIMIT 1)
                         ) ORDER BY u.id) FILTER (WHERE u.id IS NOT NULL), '[]') AS members
-                 FROM assignment_groups ag
-                 JOIN groups g ON g.id = ag.group_id
+                 FROM groups g
                  LEFT JOIN group_members gm ON gm.group_id = g.id
                  LEFT JOIN users u ON u.id = gm.user_id
                  LEFT JOIN submissions s ON s.assignment_id = $1 AND s.group_id = g.id
-                 WHERE ag.assignment_id = $1
+                 WHERE (
+                     EXISTS (SELECT 1 FROM assignment_groups ag
+                             WHERE ag.assignment_id = $1 AND ag.group_id = g.id)
+                     OR (
+                         COALESCE($2, 0) > 0
+                         AND EXISTS (
+                             SELECT 1 FROM group_members gm2
+                             JOIN course_students cs ON cs.student_id = gm2.user_id
+                             WHERE gm2.group_id = g.id AND cs.course_id = $2
+                         )
+                     )
+                 )
                  GROUP BY g.id, s.id, s.confirmed, s.confirmed_at
                  ORDER BY g.name`,
-                [assignmentId]
+                [assignmentId, assignment.course_id]
             );
             return res.status(200).json({ success: true, assignment, groups: result.rows });
         }
@@ -366,6 +376,8 @@ export const getMyGrades = async (req, res) => {
                  a.max_score,
                  a.submission_type,
                  a.course_id,
+                 a.onedrive_link,
+                 a.due_date,
                  c.code AS course_code,
                  c.name AS course_name,
                  CASE
@@ -422,7 +434,16 @@ export const getMyGrades = async (req, res) => {
                      WHERE gr.assignment_id = a.id
                        AND gr.student_id = $1
                        AND gr.group_id IS NOT NULL
-                 ) AS has_override
+                 ) AS has_override,
+                 EXISTS (
+                     SELECT 1 FROM submissions s
+                     WHERE s.assignment_id = a.id
+                       AND (s.student_id = $1 OR s.group_id IN (
+                           SELECT gm.group_id FROM group_members gm
+                           WHERE gm.user_id = $1
+                       ))
+                       AND s.confirmed = true
+                 ) AS submitted
              FROM assignments a
              LEFT JOIN courses c ON c.id = a.course_id
              WHERE a.id IN (SELECT id FROM my_assignments)
@@ -430,7 +451,12 @@ export const getMyGrades = async (req, res) => {
             [studentId]
         );
 
-        return res.status(200).json({ success: true, grades: rows.rows });
+        const withFlags = rows.rows.map((row) => ({
+            ...row,
+            graded: row.score !== null && row.score !== undefined
+        }));
+
+        return res.status(200).json({ success: true, grades: withFlags });
     } catch (error) {
         console.error("Get my grades error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });

@@ -11,7 +11,11 @@ export const groupApi = {
     allGroups: () => api.get("/api/groups/all"),
     create: (name) => api.post("/api/groups", { name }),
     addMember: (groupId, payload) =>
-        api.post(`/api/groups/${groupId}/members`, payload)
+        api.post(`/api/groups/${groupId}/members`, payload),
+    update: (groupId, payload) => api.put(`/api/groups/${groupId}`, payload),
+    removeMember: (groupId, userId) =>
+        api.delete(`/api/groups/${groupId}/members/${userId}`),
+    remove: (groupId) => api.delete(`/api/groups/${groupId}`)
 };
 
 export const userApi = {

@@ -1,6 +1,17 @@
 import pool from "../db/connection.js";
 import { indexAssignment } from "../ai/indexAssignment.js";
 
+const resolveMaxScore = (max_score) => {
+    if (max_score === undefined || max_score === null || max_score === "") {
+        return { ok: true, value: 100 };
+    }
+    const parsed = Number(max_score);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return { ok: false };
+    }
+    return { ok: true, value: parsed };
+};
+
 export const createAssignment = async (req, res) => {
     try {
         const {
@@ -28,7 +39,15 @@ export const createAssignment = async (req, res) => {
             });
         }
 
-        if (new Date(due_date).getTime() <= Date.now()) {
+        const parsedDate = new Date(due_date).getTime();
+        if (!Number.isFinite(parsedDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Due date is invalid"
+            });
+        }
+
+        if (parsedDate <= Date.now()) {
             return res.status(400).json({
                 success: false,
                 message: "Due date cannot be in the past"
@@ -44,9 +63,14 @@ export const createAssignment = async (req, res) => {
 
         const type = submission_type === "group" ? "group" : "individual";
 
-        const parsedMax = Number(max_score);
-        const finalMax =
-            Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 100;
+        const maxCheck = resolveMaxScore(max_score);
+        if (!maxCheck.ok) {
+            return res.status(400).json({
+                success: false,
+                message: "max_score must be a positive integer"
+            });
+        }
+        const finalMax = maxCheck.value;
 
         if (course_id) {
             const courseCheck = await pool.query(
@@ -69,18 +93,9 @@ export const createAssignment = async (req, res) => {
                  created_by, is_global, submission_type, course_id, max_score)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING
-                id,
-                title,
-                description,
-                due_date,
-                onedrive_link,
-                created_by,
-                is_global,
-                submission_type,
-                course_id,
-                max_score,
-                created_at,
-                updated_at`,
+                id, title, description, due_date, onedrive_link,
+                created_by, is_global, submission_type, course_id, max_score,
+                created_at, updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,
@@ -203,7 +218,11 @@ export const assignToGroup = async (req, res) => {
         }
 
         const assignmentResult = await pool.query(
-            `SELECT id, title, course_id FROM assignments WHERE id = $1`,
+            `SELECT a.id, a.title, a.course_id,
+                    COALESCE(c.professor_id, a.created_by) AS owner_id
+             FROM assignments a
+             LEFT JOIN courses c ON c.id = a.course_id
+             WHERE a.id = $1`,
             [assignmentId]
         );
 
@@ -215,6 +234,13 @@ export const assignToGroup = async (req, res) => {
         }
 
         const assignment = assignmentResult.rows[0];
+
+        if (assignment.owner_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not own this assignment"
+            });
+        }
 
         const groupResult = await pool.query(
             `SELECT id, name FROM groups WHERE id = $1`,
@@ -296,7 +322,11 @@ export const assignToStudent = async (req, res) => {
         }
 
         const assignmentResult = await pool.query(
-            `SELECT id, title FROM assignments WHERE id = $1`,
+            `SELECT a.id, a.title,
+                    COALESCE(c.professor_id, a.created_by) AS owner_id
+             FROM assignments a
+             LEFT JOIN courses c ON c.id = a.course_id
+             WHERE a.id = $1`,
             [assignmentId]
         );
 
@@ -304,6 +334,13 @@ export const assignToStudent = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Assignment not found"
+            });
+        }
+
+        if (assignmentResult.rows[0].owner_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not own this assignment"
             });
         }
 
@@ -382,10 +419,11 @@ export const updateAssignment = async (req, res) => {
             });
         }
 
-        if (new Date(due_date).getTime() <= Date.now()) {
+        const parsedDate = new Date(due_date).getTime();
+        if (!Number.isFinite(parsedDate)) {
             return res.status(400).json({
                 success: false,
-                message: "Due date cannot be in the past"
+                message: "Due date is invalid"
             });
         }
 
@@ -397,7 +435,11 @@ export const updateAssignment = async (req, res) => {
         }
 
         const existingAssignment = await pool.query(
-            `SELECT id FROM assignments WHERE id = $1`,
+            `SELECT a.id, a.due_date,
+                    COALESCE(c.professor_id, a.created_by) AS owner_id
+             FROM assignments a
+             LEFT JOIN courses c ON c.id = a.course_id
+             WHERE a.id = $1`,
             [assignmentId]
         );
 
@@ -408,11 +450,32 @@ export const updateAssignment = async (req, res) => {
             });
         }
 
+        if (existingAssignment.rows[0].owner_id !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: "You do not own this assignment"
+            });
+        }
+
+        const oldDate = new Date(existingAssignment.rows[0].due_date).getTime();
+
+        if (parsedDate !== oldDate && parsedDate <= Date.now()) {
+            return res.status(400).json({
+                success: false,
+                message: "Due date cannot be in the past"
+            });
+        }
+
         const type = submission_type === "group" ? "group" : "individual";
 
-        const parsedMax = Number(max_score);
-        const finalMax =
-            Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 100;
+        const maxCheck = resolveMaxScore(max_score);
+        if (!maxCheck.ok) {
+            return res.status(400).json({
+                success: false,
+                message: "max_score must be a positive integer"
+            });
+        }
+        const finalMax = maxCheck.value;
 
         if (course_id) {
             const courseCheck = await pool.query(
@@ -443,18 +506,9 @@ export const updateAssignment = async (req, res) => {
                 updated_at = NOW()
              WHERE id = $9
              RETURNING
-                id,
-                title,
-                description,
-                due_date,
-                onedrive_link,
-                created_by,
-                is_global,
-                submission_type,
-                course_id,
-                max_score,
-                created_at,
-                updated_at`,
+                id, title, description, due_date, onedrive_link,
+                created_by, is_global, submission_type, course_id, max_score,
+                created_at, updated_at`,
             [
                 title.trim(),
                 description?.trim() || null,

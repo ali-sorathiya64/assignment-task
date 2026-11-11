@@ -23,6 +23,9 @@ const StudentGroups = () => {
     const [groupName, setGroupName] = useState("");
     const [addingTo, setAddingTo] = useState(null);
     const [memberInput, setMemberInput] = useState("");
+    const [editing, setEditing] = useState(null);
+    const [editName, setEditName] = useState("");
+    const [deleting, setDeleting] = useState(null);
     const [formError, setFormError] = useState("");
     const [saving, setSaving] = useState(false);
 
@@ -39,7 +42,6 @@ const StudentGroups = () => {
             setLoading(false);
         }
     }, []);
-    
 
     useEffect(() => {
         load();
@@ -84,12 +86,57 @@ const StudentGroups = () => {
         }
     };
 
+    const saveEdit = async () => {
+        setFormError("");
+        if (!editName.trim()) {
+            setFormError("Group name cannot be empty.");
+            return;
+        }
+        setSaving(true);
+        try {
+            await groupApi.update(editing.id, { name: editName.trim() });
+            push("Group updated");
+            setEditing(null);
+            setEditName("");
+            load();
+        } catch (err) {
+            setFormError(readError(err, "Could not update group."));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const confirmDelete = async () => {
+        setFormError("");
+        setSaving(true);
+        try {
+            await groupApi.remove(deleting.id);
+            push("Group deleted");
+            setDeleting(null);
+            load();
+        } catch (err) {
+            setFormError(readError(err, "Could not delete group."));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const removeMember = async (group, memberId) => {
+        try {
+            await groupApi.removeMember(group.id, memberId);
+            push("Member removed");
+            load();
+        } catch (err) {
+            push(readError(err, "Could not remove member."), "error");
+        }
+    };
+
     return (
         <>
             <PageHeader
                 eyebrow="Student"
                 title="My groups"
-                subtitle="Create a group and add classmates by email or student ID."
+                subtitle="Create groups, add classmates, and manage membership."
                 action={
                     <Button
                         variant="accent"
@@ -120,66 +167,122 @@ const StudentGroups = () => {
 
             {!loading && !error && groups.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2">
-                    {groups.map((group) => (
-                        <Card key={group.id} className="px-5 py-5">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <h3 className="font-display text-base font-bold tracking-tight text-ink">
-                                        {group.name}
-                                    </h3>
-                                    <p className="mt-1 text-xs text-ink-muted">
-                                        {group.members?.length || 0} member
-                                        {group.members?.length === 1 ? "" : "s"}
-                                    </p>
+                    {groups.map((group) => {
+                        const isLeader = group.leader_id === user?.id;
+
+                        return (
+                            <Card key={group.id} className="px-5 py-5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-display text-base font-bold tracking-tight text-ink">
+                                                {group.name}
+                                            </h3>
+                                            {isLeader && (
+                                                <Badge tone="accent">Leader</Badge>
+                                            )}
+                                        </div>
+                                        <p className="mt-1 text-xs text-ink-muted">
+                                            {group.members?.length || 0} member
+                                            {group.members?.length === 1
+                                                ? ""
+                                                : "s"}
+                                        </p>
+                                    </div>
+
+                                    {isLeader && (
+                                        <div className="flex gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEditing(group);
+                                                    setEditName(group.name);
+                                                    setFormError("");
+                                                }}
+                                                className="rounded-md px-2 py-1 text-[11px] font-medium text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setDeleting(group);
+                                                    setFormError("");
+                                                }}
+                                                className="rounded-md px-2 py-1 text-[11px] font-medium text-danger transition-colors hover:bg-danger-soft"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {group.created_by === user?.id && (
-                                    <Badge tone="accent">Owner</Badge>
-                                )}
-                            </div>
-
-                            <ul className="mt-4 space-y-2">
-                                {(group.members || []).map((member) => (
-                                    <li
-                                        key={member.id}
-                                        className="flex items-center gap-3 rounded-md bg-canvas px-3 py-2"
-                                    >
-                                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-ink-soft">
-                                            {initials(member.name)}
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-medium text-ink">
-                                                {member.name}
-                                                {member.id === user?.id && (
-                                                    <span className="ml-1 text-ink-faint">
-                                                        (you)
-                                                    </span>
+                                <ul className="mt-4 space-y-2">
+                                    {(group.members || []).map((member) => (
+                                        <li
+                                            key={member.id}
+                                            className="flex items-center gap-3 rounded-md bg-canvas px-3 py-2"
+                                        >
+                                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-ink-soft">
+                                                {initials(member.name)}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-medium text-ink">
+                                                    {member.name}
+                                                    {member.id === user?.id && (
+                                                        <span className="ml-1 text-ink-faint">
+                                                            (you)
+                                                        </span>
+                                                    )}
+                                                    {member.is_leader && (
+                                                        <span className="ml-1 text-[10px] font-medium text-accent">
+                                                            · leader
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <p className="truncate text-xs text-ink-muted">
+                                                    {member.email}
+                                                </p>
+                                            </div>
+                                            {isLeader &&
+                                                !member.is_leader &&
+                                                member.id !== user?.id && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeMember(
+                                                                group,
+                                                                member.id
+                                                            )
+                                                        }
+                                                        className="text-[11px] font-medium text-ink-faint transition-colors hover:text-danger"
+                                                    >
+                                                        Remove
+                                                    </button>
                                                 )}
-                                            </p>
-                                            <p className="truncate text-xs text-ink-muted">
-                                                {member.email}
-                                            </p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
+                                        </li>
+                                    ))}
+                                </ul>
 
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className="mt-4 w-full"
-                                onClick={() => {
-                                    setFormError("");
-                                    setAddingTo(group);
-                                }}
-                            >
-                                Add member
-                            </Button>
-                        </Card>
-                    ))}
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    className="mt-4 w-full"
+                                    onClick={() => {
+                                        setFormError("");
+                                        setAddingTo(group);
+                                    }}
+                                    disabled={!isLeader}
+                                >
+                                    {isLeader ? "Add member" : "Only leader can add members"}
+                                </Button>
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 
+            {/* Create modal */}
             <Modal
                 open={creating}
                 onClose={() => setCreating(false)}
@@ -218,6 +321,7 @@ const StudentGroups = () => {
                 )}
             </Modal>
 
+            {/* Add member modal */}
             <Modal
                 open={Boolean(addingTo)}
                 onClose={() => setAddingTo(null)}
@@ -251,6 +355,76 @@ const StudentGroups = () => {
                 />
                 <p className="mt-2 text-xs text-ink-muted">
                     Numbers are treated as student ID; anything else as email.
+                </p>
+                {formError && (
+                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                        {formError}
+                    </p>
+                )}
+            </Modal>
+
+            {/* Edit group modal */}
+            <Modal
+                open={Boolean(editing)}
+                onClose={() => setEditing(null)}
+                title="Edit group name"
+                description={editing?.name}
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setEditing(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="accent"
+                            loading={saving}
+                            disabled={!editName.trim()}
+                            onClick={saveEdit}
+                        >
+                            Save
+                        </Button>
+                    </>
+                }
+            >
+                <label className="label" htmlFor="edit-name">
+                    New group name
+                </label>
+                <input
+                    id="edit-name"
+                    className="field"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                />
+                {formError && (
+                    <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+                        {formError}
+                    </p>
+                )}
+            </Modal>
+
+            {/* Delete group modal */}
+            <Modal
+                open={Boolean(deleting)}
+                onClose={() => setDeleting(null)}
+                title="Delete group?"
+                description={deleting?.name}
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setDeleting(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            loading={saving}
+                            onClick={confirmDelete}
+                        >
+                            Delete group
+                        </Button>
+                    </>
+                }
+            >
+                <p className="text-sm text-ink-soft">
+                    This will permanently delete <strong>{deleting?.name}</strong>.
+                    Groups that have received assignments cannot be deleted.
                 </p>
                 {formError && (
                     <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">

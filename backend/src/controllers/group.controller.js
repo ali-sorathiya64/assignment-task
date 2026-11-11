@@ -68,7 +68,7 @@ export const addMember = async (req, res) => {
         }
 
         const groupResult = await pool.query(
-            `SELECT id, name FROM groups WHERE id = $1`,
+            `SELECT id, name, leader_id FROM groups WHERE id = $1`,
             [groupId]
         );
 
@@ -79,16 +79,26 @@ export const addMember = async (req, res) => {
             });
         }
 
-        const memberResult = await pool.query(
-            `SELECT id FROM group_members
-             WHERE group_id = $1 AND user_id = $2`,
-            [groupId, req.user.id]
-        );
+        const group = groupResult.rows[0];
 
-        if (memberResult.rows.length === 0) {
+        if (group.leader_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
-                message: "You are not a member of this group"
+                message: "Only the group leader can add members"
+            });
+        }
+
+        const hasConfirmedSubmission = await pool.query(
+            `SELECT 1 FROM submissions
+             WHERE group_id = $1 AND confirmed = true LIMIT 1`,
+            [groupId]
+        );
+
+        if (hasConfirmedSubmission.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "Cannot add members after the group submission is confirmed"
             });
         }
 
@@ -127,6 +137,48 @@ export const addMember = async (req, res) => {
             return res.status(409).json({
                 success: false,
                 message: "Student is already a member of this group"
+            });
+        }
+
+        const groupAssignments = await pool.query(
+            `SELECT a.id AS assignment_id, a.course_id
+             FROM assignment_groups ag
+             JOIN assignments a ON a.id = ag.assignment_id
+             WHERE ag.group_id = $1 AND a.course_id IS NOT NULL`,
+            [groupId]
+        );
+
+        for (const row of groupAssignments.rows) {
+            const enrolled = await pool.query(
+                `SELECT 1 FROM course_students
+                 WHERE course_id = $1 AND student_id = $2`,
+                [row.course_id, student.id]
+            );
+            if (enrolled.rows.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "This student is not enrolled in the course for one of this group's assignments"
+                });
+            }
+        }
+
+        const conflict = await pool.query(
+            `SELECT DISTINCT ag2.assignment_id
+             FROM assignment_groups ag1
+             JOIN assignment_groups ag2 ON ag2.assignment_id = ag1.assignment_id
+             JOIN group_members gm ON gm.group_id = ag2.group_id
+             WHERE ag1.group_id = $1
+               AND ag2.group_id <> $1
+               AND gm.user_id = $2`,
+            [groupId, student.id]
+        );
+
+        if (conflict.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This student is already in another group for one of this group's assignments"
             });
         }
 
@@ -327,6 +379,20 @@ export const removeMember = async (req, res) => {
             });
         }
 
+        const hasGroupSubmission = await pool.query(
+            `SELECT 1 FROM submissions
+             WHERE group_id = $1 AND confirmed = true LIMIT 1`,
+            [groupId]
+        );
+
+        if (hasGroupSubmission.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message:
+                    "Cannot remove members after the group submission is confirmed"
+            });
+        }
+
         const result = await pool.query(
             `DELETE FROM group_members
              WHERE group_id = $1 AND user_id = $2
@@ -388,6 +454,18 @@ export const deleteGroup = async (req, res) => {
             return res.status(409).json({
                 success: false,
                 message: "Cannot delete a group that has received assignments"
+            });
+        }
+
+        const hasSubmissions = await pool.query(
+            `SELECT 1 FROM submissions WHERE group_id = $1 LIMIT 1`,
+            [groupId]
+        );
+
+        if (hasSubmissions.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "Cannot delete a group that has submissions or grades"
             });
         }
 

@@ -52,15 +52,32 @@ const GradeAssignment = () => {
                 ← Back to grading
             </Link>
 
-            <PageHeader
-                eyebrow={`Max ${assignment.max_score} marks`}
-                title={assignment.title}
-                subtitle={
-                    assignment.submission_type === "group"
-                        ? "Grade the group as a whole, then override individual members if needed."
-                        : "Enter a score and optional feedback for each student."
+        <PageHeader
+    eyebrow={`Max ${assignment.max_score} marks`}
+    title={assignment.title}
+    subtitle={
+        assignment.submission_type === "group"
+            ? "Grade the group as a whole, then override individual members if needed."
+            : "Enter a score and optional feedback for each student."
+    }
+    action={
+        assignment.onedrive_link && (
+            <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                    window.open(
+                        assignment.onedrive_link,
+                        "_blank",
+                        "noopener,noreferrer"
+                    )
                 }
-            />
+            >
+                Open submission folder
+            </Button>
+        )
+    }
+/>
 
             {assignment.submission_type === "group" ? (
                 <GroupGrading
@@ -372,7 +389,7 @@ const GroupGradeCard = ({ assignment, group, onSaved, push }) => {
                             className="field h-10 w-28 tabular-nums"
                         />
                     </div>
-                    <div className="min-w-[240px] flex-1">
+                    <div className="min-w-60 flex-1">
                         <label className="mb-1 block text-[11px] font-medium text-ink-muted">
                             Feedback (visible to all members)
                         </label>
@@ -590,7 +607,7 @@ const MemberOverrideRow = ({ assignment, group, member, onSaved, push }) => {
                             className="field h-9 w-full tabular-nums"
                         />
                     </div>
-                    <div className="min-w-[180px] flex-1">
+                    <div className="min-w-45 flex-1">
                         <label className="mb-1 block text-[10px] font-medium text-ink-muted">
                             Reason / feedback
                         </label>
