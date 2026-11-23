@@ -7,7 +7,6 @@ Built as a Full Stack Intern technical task for Joineazy.
 ## Live Demo
 
 - **Frontend:** https://joineazy-assignment-system.vercel.app
-- **Backend:** https://joineazy-backend-4ja5.onrender.com
 - **API Documentation:** https://joineazy-backend-4ja5.onrender.com/api-docs
 
 ## Overview
