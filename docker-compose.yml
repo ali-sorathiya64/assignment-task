@@ -1,7 +1,7 @@
 services:
    backend:
     build: ./backend
-    container_name: task-backend
+    container_name: task_backend
     restart: always
     env_file:
       - ./backend/.env
